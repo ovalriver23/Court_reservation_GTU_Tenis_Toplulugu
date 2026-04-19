@@ -7,7 +7,7 @@ function getDates(): Date[] {
   const dates: Date[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     dates.push(d);
@@ -21,7 +21,10 @@ interface WeekCalendarProps {
 }
 
 function toDateString(d: Date): string {
-  return d.toISOString().split("T")[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function WeekCalendar({ selected, onChange }: WeekCalendarProps) {

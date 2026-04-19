@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { cancelSlot } from "@/lib/actions/reserve";
 import type { Slot } from "@/types";
@@ -15,12 +16,13 @@ export default async function ReservationsPage() {
 
   if (!user) return null;
 
-  const today = new Date().toISOString().split("T")[0];
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   const { data } = await supabase
     .from("slots")
     .select("*")
-    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+    .eq("player1_id", user.id)
     .gte("date", today)
     .order("date")
     .order("time");
@@ -46,27 +48,13 @@ export default async function ReservationsPage() {
                 <div>
                   <p className="text-text-primary font-semibold text-base">{slot.time}</p>
                   <p className="text-text-secondary text-xs mt-0.5">{formatDate(slot.date)}</p>
-                  {/* Rakip oyuncu */}
-                  {slot.player1_id === user.id && slot.player2_name && (
-                    <p className="text-text-secondary text-xs mt-2">
-                      Rakip: <span className="text-text-primary">{slot.player2_name}</span>
-                    </p>
-                  )}
-                  {slot.player2_id === user.id && slot.player1_name && (
-                    <p className="text-text-secondary text-xs mt-2">
-                      Rakip: <span className="text-text-primary">{slot.player1_name}</span>
-                    </p>
-                  )}
-                  {((slot.player1_id === user.id && !slot.player2_id) ||
-                    (slot.player2_id === user.id && !slot.player1_id)) && (
-                    <p className="text-text-secondary text-xs mt-2">Rakip bekleniyor...</p>
-                  )}
                 </div>
 
                 <form
                   action={async () => {
                     "use server";
                     await cancelSlot(slot.id, slot.date, slot.time);
+                    revalidatePath("/reservations");
                   }}
                 >
                   <button

@@ -1,13 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { ReserveSlotResult } from "@/types";
 
 export async function reserveSlot(
   _slotId: string,
   date: string,
-  time: string,
-  partnerName?: string
+  time: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
 
@@ -35,16 +34,6 @@ export async function reserveSlot(
   const result = data as ReserveSlotResult;
   if (!result.success) return { error: result.error };
 
-  // Arkadaş adı girilmişse ikinci slotu da doldur
-  if (partnerName && result.position === 1) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from("slots")
-      .update({ player2_id: user.id, player2_name: partnerName })
-      .eq("date", date)
-      .eq("time", time);
-  }
-
   return {};
 }
 
@@ -54,37 +43,25 @@ export async function cancelSlot(
   time: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Giriş yapılmadı." };
 
-  // Hangi player olduğunu bul
-  const { data: slot } = await supabase
+  const admin = createAdminClient();
+
+  // Verify ownership before updating
+  const { data: slot } = await admin
     .from("slots")
-    .select("player1_id, player2_id")
+    .select("player1_id")
     .eq("date", date)
     .eq("time", time)
-    .single<{ player1_id: string | null; player2_id: string | null }>();
+    .single() as { data: { player1_id: string | null } | null };
 
   if (!slot) return { error: "Slot bulunamadı." };
+  if (slot.player1_id !== user.id) return { error: "Bu rezervasyon size ait değil." };
 
-  const updateData: Record<string, null> = {};
-  if (slot.player1_id === user.id) {
-    updateData.player1_id = null;
-    updateData.player1_name = null;
-  }
-  if (slot.player2_id === user.id) {
-    updateData.player2_id = null;
-    updateData.player2_name = null;
-  }
-  if (Object.keys(updateData).length === 0) {
-    return { error: "Bu rezervasyon size ait değil." };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await admin
     .from("slots")
-    .update(updateData)
+    .update({ player1_id: null, player1_name: null })
     .eq("date", date)
     .eq("time", time);
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function login(formData: FormData) {
@@ -42,7 +42,7 @@ export async function register(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -55,6 +55,17 @@ export async function register(formData: FormData) {
       return { error: "Bu e-posta zaten kayıtlı." };
     }
     return { error: "Kayıt olurken bir hata oluştu." };
+  }
+
+  // Create the profile row using service role to bypass RLS
+  if (data.user) {
+    const admin = createAdminClient();
+    await admin.from("profiles").upsert({
+      id: data.user.id,
+      name,
+      email,
+      approved: false,
+    }, { onConflict: "id" });
   }
 
   redirect("/pending");

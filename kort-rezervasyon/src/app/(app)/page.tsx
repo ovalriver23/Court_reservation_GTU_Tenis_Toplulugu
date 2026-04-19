@@ -8,12 +8,25 @@ import { reserveSlot, cancelSlot } from "@/lib/actions/reserve";
 import type { Slot } from "@/types";
 
 function todayString(): string {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function filterVisibleSlots(slots: Slot[], date: string): Slot[] {
   const todayStr = todayString();
-  return slots.filter((s) => s.date >= todayStr);
+  if (date !== todayStr) return slots;
+
+  // For today: hide slots that have already passed
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  return slots.filter((s) => {
+    const [h, m] = s.time.split(":").map(Number);
+    return h > currentHour || (h === currentHour && m >= currentMinute);
+  });
 }
 
 export default function HomePage() {
@@ -60,9 +73,9 @@ export default function HomePage() {
 
   // Rezervasyon: server action çağır, sonra hemen refresh
   const handleReserve = useCallback(async (
-    slotId: string, date: string, time: string, partnerName?: string
+    slotId: string, date: string, time: string
   ) => {
-    const result = await reserveSlot(slotId, date, time, partnerName);
+    const result = await reserveSlot(slotId, date, time);
     if (!result.error) fetchSlots(selectedDate);
     return result;
   }, [selectedDate, fetchSlots]);
