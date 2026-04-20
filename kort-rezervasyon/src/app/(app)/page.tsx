@@ -15,25 +15,35 @@ function todayString(): string {
   return `${y}-${m}-${day}`;
 }
 
-function filterVisibleSlots(slots: Slot[], date: string): Slot[] {
-  const todayStr = todayString();
-  if (date !== todayStr) return slots;
+function filterVisibleSlots(slots: Slot[], date: string, settings: AppSettings | null): Slot[] {
+  let filtered = slots;
 
-  // For today: hide slots that have already passed
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  return slots.filter((s) => {
-    const [h, m] = s.time.split(":").map(Number);
-    return h > currentHour || (h === currentHour && m >= currentMinute);
-  });
+  if (settings) {
+    filtered = filtered.filter(s => s.time >= settings.slot_start && s.time <= settings.slot_end);
+  }
+
+  const todayStr = todayString();
+  if (date === todayStr) {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    filtered = filtered.filter((s) => {
+      const [h, m] = s.time.split(":").map(Number);
+      return h > currentHour || (h === currentHour && m >= currentMinute);
+    });
+  }
+
+  return filtered;
 }
+
+type AppSettings = { slot_start: string; slot_end: string };
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [userId, setUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
   const supabase = createClient();
 
@@ -41,6 +51,8 @@ export default function HomePage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
+    supabase.from("app_settings").select("slot_start, slot_end").eq("id", 1).single()
+      .then(({ data }) => { if (data) setSettings(data as AppSettings); });
   }, []);
 
   const fetchSlots = useCallback(async (date: string) => {
@@ -58,7 +70,6 @@ export default function HomePage() {
     fetchSlots(selectedDate);
   }, [selectedDate, fetchSlots]);
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel(`slots-${selectedDate}`)
@@ -71,7 +82,6 @@ export default function HomePage() {
     return () => { supabase.removeChannel(channel); };
   }, [selectedDate, fetchSlots]);
 
-  // Rezervasyon: server action çağır, sonra hemen refresh
   const handleReserve = useCallback(async (
     slotId: string, date: string, time: string
   ) => {
@@ -80,7 +90,6 @@ export default function HomePage() {
     return result;
   }, [selectedDate, fetchSlots]);
 
-  // İptal: server action çağır, sonra hemen refresh
   const handleCancel = useCallback(async (
     slotId: string, date: string, time: string
   ) => {
@@ -89,7 +98,7 @@ export default function HomePage() {
     return result;
   }, [selectedDate, fetchSlots]);
 
-  const visibleSlots = filterVisibleSlots(slots, selectedDate);
+  const visibleSlots = filterVisibleSlots(slots, selectedDate, settings);
 
   return (
     <div className="flex flex-col h-full">

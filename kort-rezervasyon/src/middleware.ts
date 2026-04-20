@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/verify");
 
   // Giriş yapmamışsa auth sayfalarına yönlendir
   if (!user && !isAuthPage) {
@@ -46,12 +46,18 @@ export async function middleware(request: NextRequest) {
   if (user && !isAuthPage) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("approved")
+      .select("approved, is_admin")
       .eq("id", user.id)
-      .single();
+      .single<{ approved: boolean; is_admin: boolean }>();
 
-    if (profile && !profile.approved && pathname !== "/pending") {
+    // Admins bypass the approval check
+    if (profile && !profile.approved && !profile.is_admin && pathname !== "/pending") {
       return NextResponse.redirect(new URL("/pending", request.url));
+    }
+
+    // Non-admins cannot access /admin
+    if (pathname.startsWith("/admin") && !profile?.is_admin) {
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 

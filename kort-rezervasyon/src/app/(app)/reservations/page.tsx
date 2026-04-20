@@ -1,24 +1,25 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/cache";
 import { cancelSlot } from "@/lib/actions/reserve";
 import type { Slot } from "@/types";
 
-const DAYS_TR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+const MONTHS_TR = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+const DAYS_TR = ["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"];
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  return `${d.getDate()} ${["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"][d.getMonth()]} ${d.getFullYear()} — ${DAYS_TR[d.getDay()]}`;
+  return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${d.getFullYear()} — ${DAYS_TR[d.getDay()]}`;
 }
 
 export default async function ReservationsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+  const user = await getUser();
   if (!user) return null;
 
   const d = new Date();
   const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("slots")
     .select("*")
@@ -40,16 +41,12 @@ export default async function ReservationsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {reservations.map((slot) => (
-            <div
-              key={slot.id}
-              className="bg-surface border border-primary/30 rounded-2xl px-4 py-4"
-            >
+            <div key={slot.id} className="bg-surface border border-primary/30 rounded-2xl px-4 py-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-text-primary font-semibold text-base">{slot.time}</p>
                   <p className="text-text-secondary text-xs mt-0.5">{formatDate(slot.date)}</p>
                 </div>
-
                 <form
                   action={async () => {
                     "use server";
