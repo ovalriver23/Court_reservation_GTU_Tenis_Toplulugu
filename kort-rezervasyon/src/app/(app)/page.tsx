@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import WeekCalendar from "@/components/WeekCalendar";
 import SlotCard from "@/components/SlotCard";
 import { createClient } from "@/lib/supabase/client";
@@ -15,32 +15,45 @@ function todayString(): string {
   return `${y}-${m}-${day}`;
 }
 
-function filterVisibleSlots(slots: Slot[], date: string): Slot[] {
-  const todayStr = todayString();
-  if (date !== todayStr) return slots;
+function filterVisibleSlots(slots: Slot[], date: string, settings: AppSettings | null): Slot[] {
+  let filtered = slots;
 
-  // For today: hide slots that have already passed
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  return slots.filter((s) => {
-    const [h, m] = s.time.split(":").map(Number);
-    return h > currentHour || (h === currentHour && m >= currentMinute);
-  });
+  if (settings) {
+    filtered = filtered.filter(s => s.time >= settings.slot_start && s.time <= settings.slot_end);
+  }
+
+  // Sadece bugünün geçmiş saatlerini gizle; advance-lock slotları SlotCard'da göster
+  const todayStr = todayString();
+  if (date === todayStr) {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    filtered = filtered.filter((s) => {
+      const [sh, sm] = s.time.split(":").map(Number);
+      return sh > h || (sh === h && sm >= m);
+    });
+  }
+
+  return filtered;
 }
+
+type AppSettings = { slot_start: string; slot_end: string; min_advance_hours: number };
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [userId, setUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
+    supabase.from("app_settings").select("slot_start, slot_end, min_advance_hours").eq("id", 1).single()
+      .then(({ data }) => { if (data) setSettings(data as AppSettings); });
   }, []);
 
   const fetchSlots = useCallback(async (date: string) => {
@@ -52,13 +65,12 @@ export default function HomePage() {
       .order("time");
     setSlots((data as Slot[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchSlots(selectedDate);
   }, [selectedDate, fetchSlots]);
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel(`slots-${selectedDate}`)
@@ -71,7 +83,6 @@ export default function HomePage() {
     return () => { supabase.removeChannel(channel); };
   }, [selectedDate, fetchSlots]);
 
-  // Rezervasyon: server action çağır, sonra hemen refresh
   const handleReserve = useCallback(async (
     slotId: string, date: string, time: string
   ) => {
@@ -80,7 +91,6 @@ export default function HomePage() {
     return result;
   }, [selectedDate, fetchSlots]);
 
-  // İptal: server action çağır, sonra hemen refresh
   const handleCancel = useCallback(async (
     slotId: string, date: string, time: string
   ) => {
@@ -89,36 +99,46 @@ export default function HomePage() {
     return result;
   }, [selectedDate, fetchSlots]);
 
-  const visibleSlots = filterVisibleSlots(slots, selectedDate);
+  const visibleSlots = useMemo(
+    () => filterVisibleSlots(slots, selectedDate, settings),
+    [slots, selectedDate, settings]
+  );
+
+  const minAdvanceHours = settings?.min_advance_hours ?? 0;
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-3">
-        <WeekCalendar selected={selectedDate} onChange={setSelectedDate} />
+      <div className="pt-4 pb-3">
+        <div className="px-4 max-w-4xl mx-auto">
+          <WeekCalendar selected={selectedDate} onChange={setSelectedDate} />
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-6">
-        {loading ? (
-          <div className="flex justify-center pt-12">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : visibleSlots.length === 0 ? (
-          <div className="text-center pt-12">
-            <p className="text-text-secondary text-sm">Bu gün için uygun slot yok.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {visibleSlots.map((slot) => (
-              <SlotCard
-                key={slot.id}
-                slot={slot}
-                currentUserId={userId}
-                onReserve={handleReserve}
-                onCancel={handleCancel}
-              />
-            ))}
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto pb-6">
+        <div className="px-4 max-w-4xl mx-auto">
+          {loading ? (
+            <div className="flex justify-center pt-12">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : visibleSlots.length === 0 ? (
+            <div className="text-center pt-12">
+              <p className="text-text-secondary text-sm">Bu gün için uygun slot yok.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {visibleSlots.map((slot) => (
+                <SlotCard
+                  key={slot.id}
+                  slot={slot}
+                  currentUserId={userId}
+                  minAdvanceHours={minAdvanceHours}
+                  onReserve={handleReserve}
+                  onCancel={handleCancel}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

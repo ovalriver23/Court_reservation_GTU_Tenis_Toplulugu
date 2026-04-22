@@ -31,7 +31,8 @@ export default function WeekCalendar({ selected, onChange }: WeekCalendarProps) 
   const dates = getDates();
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex gap-2 min-w-full w-max justify-center">
       {dates.map((d) => {
         const key = toDateString(d);
         const isSelected = key === selected;
@@ -60,6 +61,7 @@ export default function WeekCalendar({ selected, onChange }: WeekCalendarProps) 
           </button>
         );
       })}
+      </div>
     </div>
   );
 }

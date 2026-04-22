@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { register } from "@/lib/actions/auth";
+import AnimatedBall from "@/components/AnimatedBall";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
@@ -13,8 +14,14 @@ export default function RegisterPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const confirm = formData.get("confirm") as string;
+
+    if (!email.endsWith("@gtu.edu.tr")) {
+      setError("Sadece @gtu.edu.tr e-posta adresleri ile kayıt olabilirsiniz.");
+      return;
+    }
 
     if (password !== confirm) {
       setError("Şifreler eşleşmiyor.");
@@ -47,13 +54,7 @@ export default function RegisterPage() {
       >
         {/* Logo / Başlık */}
         <div className="mb-8 text-center">
-          <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" style={{ width: 52, height: 52, display: "block", margin: "0 auto 16px", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
-            <circle cx="30" cy="30" r="29" fill="#D0FF00" />
-            <circle cx="30" cy="30" r="29" fill="none" stroke="#AACC00" strokeWidth="1" />
-            <path d="M 8 13 C 20 22, 20 38, 8 47"  stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-            <path d="M 52 13 C 40 22, 40 38, 52 47" stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-            <ellipse cx="20" cy="16" rx="8" ry="5" fill="white" opacity="0.2" transform="rotate(-40 20 16)" />
-          </svg>
+          <AnimatedBall />
           <h1 className="text-text-primary text-2xl font-semibold">GTU Tenis</h1>
           <p className="text-white/60 text-sm mt-1">Yeni hesap oluştur</p>
         </div>
@@ -88,7 +89,7 @@ export default function RegisterPage() {
               autoComplete="email"
               className="w-full rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
               style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
-              placeholder="ad@example.com"
+              placeholder="ad@gtu.edu.tr"
             />
           </div>
 

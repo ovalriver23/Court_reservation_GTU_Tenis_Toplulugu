@@ -15,7 +15,7 @@ const config: Config = {
         border: "#C05535",
         text: {
           primary: "#FFFFFF",
-          secondary: "#888888",
+          secondary: "#D4D4D4",
         },
       },
       fontFamily: {

@@ -44,9 +44,11 @@ kort-rezervasyon/
         layout.tsx          # Court background (CourtLines) + overflow:hidden
         login/
         register/
+        verify/             # OTP email verification step after register
       (app)/
-        layout.tsx          # Burger menu (HamburgerMenu component)
+        layout.tsx          # Burger menu (HamburgerMenu component), uses getProfile() cache
         page.tsx            # Calendar + time slots (main screen, client component)
+        admin/              # Admin panel — 4 tabs: Özet, Üyeler, Rezervasyonlar, Ayarlar
         profile/
         reservations/       # User's own active reservations
       pending/              # Shown to unapproved users
@@ -54,18 +56,19 @@ kort-rezervasyon/
       CourtLines.tsx        # Fixed background using court.jpeg
       SlotCard.tsx          # Single slot UI card (reserve / cancel)
       WeekCalendar.tsx      # 14-day horizontal date picker
-      TennisBall.tsx        # (unused) standalone bouncing ball
-      TennisBallLogo.tsx    # (unused) interactive ball logo experiment
+      SettingsForm.tsx      # Admin settings form (client component)
     lib/
       actions/
-        auth.ts             # login, register, logout server actions
-        reserve.ts          # reserveSlot, cancelSlot server actions
+        auth.ts             # login, register, logout, verifyEmail, resendVerification
+        reserve.ts          # reserveSlot (with limit checks), cancelSlot
+        admin.ts            # approveUser, rejectUser, updateSettings, refreshSlots, adminCancelSlot
       supabase/
         client.ts           # Browser Supabase client
         server.ts           # Server Supabase client + createAdminClient()
+      cache.ts              # Per-request cached getUser() and getProfile() via React cache()
     types/
-      index.ts              # Profile, Slot, ReserveSlotResult, Database types
-    middleware.ts           # Auth guard + approval check
+      index.ts              # Profile (with is_admin), Slot, ReserveSlotResult, Database types
+    middleware.ts           # Auth guard + approval check + admin route protection
 ```
 
 ## Design System — Clay Court Theme
@@ -86,7 +89,7 @@ colors: {
 
 Font: **Lexend** (Google Fonts). Mobile-first — always use `@media (hover: hover) and (pointer: fine)` for hover states.
 
-### Auth Pages (login / register)
+### Auth Pages (login / register / verify)
 - Background: `court.jpeg` photo via `CourtLines` component (fixed, full-screen)
 - Card: glassmorphism — `background: rgba(0,0,0,0.25)`, `backdropFilter: blur(20px)`, `border: 1px solid rgba(255,255,255,0.12)`
 - Logo: static tennis ball SVG (yellow #D0FF00 with seam paths), 52px, centered
@@ -99,7 +102,8 @@ Font: **Lexend** (Google Fonts). Mobile-first — always use `@media (hover: hov
 id uuid references auth.users primary key,
 name text not null,
 email text not null,
-approved boolean default false,  -- admin must approve before login works
+approved boolean default false,   -- admin must approve before login works
+is_admin boolean default false,   -- admins bypass approval and can access /admin
 created_at timestamptz default now()
 ```
 
@@ -114,12 +118,28 @@ created_at timestamptz default now(),
 unique(date, time)
 ```
 
-> ⚠️ player2_id and player2_name have been removed. Single player per slot only.
+### `app_settings`
+```sql
+id integer primary key,                -- always row id=1 (single-row config table)
+slot_start text default '08:00',       -- court opening time
+slot_end   text default '20:00',       -- court closing time
+daily_limit  integer default 0,        -- 0 = unlimited
+weekly_limit integer default 0,        -- 0 = unlimited
+min_advance_hours integer default 0    -- 0 = no restriction; slots within this window are shown but locked
+```
+
+Migration (run once in Supabase SQL Editor):
+```sql
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS min_advance_hours integer DEFAULT 0;
+```
 
 ## Business Rules
 
-### No Quota Limits
-There are **no weekly or daily limits**. Any approved user can reserve any available slot. First come, first served.
+### Reservation Limits (Configurable)
+Daily, weekly limits and minimum advance booking hours are set via `app_settings` (id=1). `0` means unlimited/unrestricted. Limits enforced atomically inside the `reserve_slot` RPC (FOR UPDATE on app_settings row). Admin configures from `/admin?tab=settings`.
+
+### Advance Booking Window
+`min_advance_hours` controls how far in advance a user must book. Slots within the window are visible but the "Rezerve" button is disabled with the message "N saat içindeki saatlere rezervasyon yapılamaz". Enforced UI-side only (SlotCard), not in RPC.
 
 ### Single Player Per Slot
 Only one player per slot. Slot is either free (`player1_id IS NULL`) or taken (`player1_id IS NOT NULL`).
@@ -128,7 +148,7 @@ Only one player per slot. Slot is either free (`player1_id IS NULL`) or taken (`
 14-day rolling window. Users can see and book slots from today up to 14 days ahead.
 
 ### UI Visibility
-Only show slots from current time onward for today (frontend filter). Future dates show all slots.
+Main page fetches `app_settings` and filters slots to `[slot_start, slot_end]`. For today, slots before the current hour are hidden (frontend filter).
 
 ### Date Formatting — CRITICAL
 Always use local date formatting, never `.toISOString()` (returns UTC, causes date drift for Turkey UTC+3).
@@ -144,7 +164,7 @@ function toDateString(d: Date): string {
 
 ## Race Condition — Use Supabase RPC
 
-Never do reservation logic in application code. Always call the `reserve_slot` RPC:
+Never do reservation logic in application code. Always call the `reserve_slot` RPC. The current production version locks `app_settings` FOR UPDATE to atomically enforce daily/weekly limits, then locks the slot row:
 
 ```sql
 create or replace function reserve_slot(
@@ -158,11 +178,33 @@ language plpgsql
 security definer
 as $$
 declare
-  v_slot slots%rowtype;
+  v_slot       slots%rowtype;
+  v_settings   app_settings%rowtype;
+  v_count      integer;
+  v_week_start date;
 begin
+  -- Lock app_settings row — makes limit checks serialized per transaction
+  select * into v_settings from app_settings where id = 1 for update;
+
+  if coalesce(v_settings.daily_limit, 0) > 0 then
+    select count(*) into v_count from slots
+    where player1_id = p_user_id and date = p_date;
+    if v_count >= v_settings.daily_limit then
+      return json_build_object('success', false, 'error', 'daily_limit_exceeded');
+    end if;
+  end if;
+
+  if coalesce(v_settings.weekly_limit, 0) > 0 then
+    v_week_start := current_date - 6;
+    select count(*) into v_count from slots
+    where player1_id = p_user_id and date >= v_week_start and date <= current_date;
+    if v_count >= v_settings.weekly_limit then
+      return json_build_object('success', false, 'error', 'weekly_limit_exceeded');
+    end if;
+  end if;
+
   select * into v_slot from slots
-  where date = p_date and time = p_time
-  for update;
+  where date = p_date and time = p_time for update;
 
   if not found then
     insert into slots (date, time, player1_id, player1_name)
@@ -181,39 +223,54 @@ end;
 $$;
 ```
 
+Stress tested: 50 concurrent requests → exactly 1 success, 49 slot_full. Limit bypass also blocked.
+
 ## Cancel Logic
 
-Cancellation uses the admin client (bypasses RLS) with a manual ownership check:
+Cancellation is atomic — a single UPDATE with ownership check in the WHERE clause:
 
 ```ts
 const admin = createAdminClient();
-const { data: slot } = await admin.from("slots")
-  .select("player1_id")
-  .eq("date", date).eq("time", time).single();
-
-if (slot.player1_id !== user.id) return { error: "Bu rezervasyon size ait değil." };
-
-await admin.from("slots")
+const { data: updated, error } = await admin
+  .from("slots")
   .update({ player1_id: null, player1_name: null })
-  .eq("date", date).eq("time", time);
+  .eq("date", date)
+  .eq("time", time)
+  .eq("player1_id", user.id)  // ownership check baked into UPDATE
+  .select("id");
+
+if (!updated || updated.length === 0)
+  return { error: "Bu rezervasyon size ait değil ya da zaten iptal edilmiş." };
 ```
 
-## Cron Job (Supabase pg_cron — runs 23:59 daily)
+This prevents TOCTOU — no window between checking ownership and cancelling.
+
+## Slot Generation — `regenerateSlots`
+
+When admin updates settings, `regenerateSlots(slot_start, slot_end)` in `admin.ts` is called automatically. It:
+1. Upserts slots for the next 14 days within the new time range (skips existing)
+2. Deletes unbooked slots outside the new range (before `slot_start` or after `slot_end`)
+
+Admin can also trigger this manually from `/admin?tab=settings → "Slotları Yenile"` button.
+
+## Cron Job (Supabase pg_cron — NOT YET SET UP)
+
+Still needs to be configured. The intended daily job at 23:59:
 
 ```sql
 -- Delete today's slots (day is over)
 delete from slots where date = current_date;
 
--- Create slots for 14 days ahead (rolling window)
+-- Create slots for 14 days ahead using current app_settings
 insert into slots (date, time)
 select
   current_date + 14,
   t
-from unnest(array[
-  '08:00','09:00','10:00','11:00','12:00',
-  '13:00','14:00','15:00','16:00','17:00',
-  '18:00','19:00','20:00'
-]) as t
+from generate_series(
+  (select slot_start::time from app_settings where id = 1),
+  (select slot_end::time   from app_settings where id = 1),
+  interval '1 hour'
+) as t
 on conflict (date, time) do nothing;
 ```
 
@@ -221,10 +278,28 @@ Enable pg_cron: Supabase Dashboard → Database → Extensions → pg_cron.
 
 ## Auth Flow
 
-1. User registers with email/password → `approved: false`
-2. Admin approves from Supabase dashboard (admin page planned but not built yet)
-3. User can only access the app after `approved: true`
-4. Unapproved users see `/pending` page
+1. User registers with email/password
+2. Supabase sends OTP email → user redirected to `/verify?email=...`
+3. User enters 6-digit OTP → `verifyEmail()` calls `supabase.auth.verifyOtp()`
+4. On success → redirected to `/pending` (approved: false by default)
+5. Admin approves from `/admin?tab=users`
+6. Admins (`is_admin: true`) bypass approval check entirely and can access `/admin`
+7. Unapproved non-admin users always see `/pending`
+
+## Admin Panel (`/admin`)
+
+Tab-based server component (`export const dynamic = "force-dynamic"`). Only `is_admin: true` users can access (middleware enforces). All profile queries use `createAdminClient()` to bypass RLS.
+
+| Tab | Content |
+|-----|---------|
+| Özet | Stats: approved member count, pending count, today's reservations, active reservations |
+| Üyeler | All users; approve, reject (delete), and toggle admin status ("Admin Yap/Kaldır") |
+| Rezervasyonlar | All active (booked) slots; admin can cancel any |
+| Ayarlar | Court hours, daily/weekly limits, min advance hours; manual slot refresh |
+
+- Badge on "Üyeler" tab shows pending count (uses admin client, `neq("is_admin", true)`)
+- "Admin Yap" also sets `approved: true` automatically
+- `pendingCount` fetched on every tab render via admin client
 
 ## Supabase Clients
 
@@ -234,8 +309,19 @@ createClient()       // SSR client with cookie handling — respects RLS
 createAdminClient()  // Service role client — bypasses RLS, server-side only
 ```
 
-Use `createAdminClient()` for: profile creation on register, slot cancellation.
+Use `createAdminClient()` for: profile creation on register, slot cancellation, admin actions.
 Use `createClient()` for: reading auth session, fetching user data.
+
+## Per-Request Cache (`lib/cache.ts`)
+
+```ts
+import { cache } from "react";
+
+export const getUser    = cache(async () => { /* supabase.auth.getUser() */ });
+export const getProfile = cache(async () => { /* profiles select with is_admin */ });
+```
+
+Layout and pages share one auth API call per request via React's `cache()`. Always import from `@/lib/cache` instead of calling Supabase directly when you need the current user/profile in server components.
 
 ## Row Level Security
 
@@ -255,7 +341,7 @@ create policy "kullanici kendi slotunu guncelleyebilir" on slots
 Main page (`page.tsx`) subscribes to slot changes for the selected date:
 
 ```ts
-supabase.channel("slots")
+supabase.channel(`slots-${selectedDate}`)
   .on("postgres_changes", {
     event: "*", schema: "public", table: "slots",
     filter: `date=eq.${selectedDate}`
@@ -268,18 +354,23 @@ supabase.channel("slots")
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=   # server-side only, never expose to client
+SUPABASE_SERVICE_ROLE_KEY=     # server-side only, never expose to client
+NEXT_PUBLIC_APP_URL=           # CRITICAL for production: must match Vercel domain
+                               # e.g. https://your-app.vercel.app
+                               # Used in forgotPassword() resetTo redirect URL
 ```
+
+**Vercel deployment:** Set all four variables in Vercel project settings → Environment Variables. `NEXT_PUBLIC_APP_URL` must be the live domain — if missing, password reset emails link to localhost.
 
 ## Pending / TODO
 
-- [ ] **Admin page** (`/admin`) — approve/reject pending users, view all reservations, cancel any slot
-- [ ] **pg_cron setup** — slots not yet auto-generated; needs manual seeding for now
-- [ ] **Type cleanup** — `types/index.ts` still has `player2_id`/`player2_name` in Slot type, remove them
+- [ ] **pg_cron setup** — slots not yet auto-generated nightly; admin must use "Slotları Yenile" for now.
 - [ ] **Email on approval** — notify user when admin approves their account
+- [ ] **Limit UX** — when daily/weekly limit is hit mid-session, SlotCard doesn't pre-disable; user sees error after clicking (server action returns the error string)
 
 ## UI Notes
 
 - Slot cards: `active:scale-95 transition-transform` for press feedback
 - All hover animations must be gated with `@media (hover: hover) and (pointer: fine)`
 - `overflow-hidden` on auth layout — prevents scroll when animated elements exist
+- Admin tab bar uses `Link` (not buttons) for tab switching — each tab is a full server-rendered page load
