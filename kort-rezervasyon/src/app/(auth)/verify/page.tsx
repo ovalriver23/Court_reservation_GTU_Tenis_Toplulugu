@@ -1,23 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { verifyEmail, resendVerification } from "@/lib/actions/auth";
 
-export default function VerifyPage() {
+function VerifyForm() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
 
-  const [code, setCode]       = useState("");
-  const [error, setError]     = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [resent, setResent]   = useState(false);
+  const [code, setCode]           = useState("");
+  const [error, setError]         = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [resent, setResent]       = useState(false);
   const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  function startCountdown() {
+    setCountdown(60);
+    const interval = setInterval(() => {
+      setCountdown(c => {
+        if (c <= 1) { clearInterval(interval); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (code.length !== 6) {
-      setError("6 haneli kodu eksiksiz gir.");
+    if (code.length < 6) {
+      setError("Kodu eksiksiz gir.");
       return;
     }
     setLoading(true);
@@ -35,8 +46,12 @@ export default function VerifyPage() {
     setError(null);
     const result = await resendVerification(email);
     setResending(false);
-    if (result?.error) setError(result.error);
-    else setResent(true);
+    if (result?.error) {
+      setError(result.error);
+    } else {
+      setResent(true);
+      startCountdown();
+    }
   }
 
   return (
@@ -77,9 +92,9 @@ export default function VerifyPage() {
               id="code"
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={8}
               value={code}
-              onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
               required
               placeholder="000000"
               className="w-full rounded-xl px-4 py-3 text-white text-center text-2xl font-bold tracking-[0.5em] placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
@@ -92,7 +107,7 @@ export default function VerifyPage() {
 
           <button
             type="submit"
-            disabled={loading || code.length !== 6}
+            disabled={loading || code.length < 6}
             className="w-full bg-primary text-background font-semibold py-3 rounded-xl transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Doğrulanıyor..." : "Doğrula"}
@@ -102,16 +117,28 @@ export default function VerifyPage() {
         <div className="mt-6 text-center">
           <p className="text-white/40 text-sm">
             Kodu almadın mı?{" "}
-            <button
-              onClick={handleResend}
-              disabled={resending}
-              className="text-primary underline underline-offset-2 disabled:opacity-50"
-            >
-              {resending ? "Gönderiliyor..." : "Yeniden gönder"}
-            </button>
+            {countdown > 0 ? (
+              <span className="text-white/30">{countdown}s sonra tekrar gönder</span>
+            ) : (
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="text-primary underline underline-offset-2 disabled:opacity-50"
+              >
+                {resending ? "Gönderiliyor..." : "Yeniden gönder"}
+              </button>
+            )}
           </p>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense>
+      <VerifyForm />
+    </Suspense>
   );
 }

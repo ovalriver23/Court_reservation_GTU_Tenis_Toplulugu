@@ -69,7 +69,7 @@ export async function approveUser(userId: string) {
   const admin = createAdminClient();
   const { error } = await admin.from("profiles").update({ approved: true }).eq("id", userId);
 
-  if (error) return { error: "İşlem başarısız." };
+  if (error) return { error: `Kullanıcı onaylanamadı: ${error.message}` };
   revalidatePath("/admin");
   return {};
 }
@@ -81,7 +81,7 @@ export async function rejectUser(userId: string) {
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.deleteUser(userId);
 
-  if (error) return { error: "İşlem başarısız." };
+  if (error) return { error: `Kullanıcı silinemedi: ${error.message}` };
   revalidatePath("/admin");
   return {};
 }
@@ -90,18 +90,19 @@ export async function updateSettings(formData: FormData) {
   const user = await requireAdmin();
   if (!user) return { error: "Yetkisiz." };
 
-  const slot_start   = formData.get("slot_start") as string;
-  const slot_end     = formData.get("slot_end") as string;
-  const daily_limit  = Math.max(0, parseInt(formData.get("daily_limit") as string) || 0);
-  const weekly_limit = Math.max(0, parseInt(formData.get("weekly_limit") as string) || 0);
+  const slot_start        = formData.get("slot_start") as string;
+  const slot_end          = formData.get("slot_end") as string;
+  const daily_limit       = Math.max(0, parseInt(formData.get("daily_limit") as string) || 0);
+  const weekly_limit      = Math.max(0, parseInt(formData.get("weekly_limit") as string) || 0);
+  const min_advance_hours = Math.max(0, parseInt(formData.get("min_advance_hours") as string) || 0);
 
   const admin = createAdminClient();
   const { error } = await admin
     .from("app_settings")
-    .update({ slot_start, slot_end, daily_limit, weekly_limit })
+    .update({ slot_start, slot_end, daily_limit, weekly_limit, min_advance_hours })
     .eq("id", 1);
 
-  if (error) return { error: "Ayarlar kaydedilemedi." };
+  if (error) return { error: `Ayarlar kaydedilemedi: ${error.message}` };
 
   // Sync slots to match the new time range
   await regenerateSlots(slot_start, slot_end);
@@ -143,7 +144,7 @@ export async function adminCancelSlot(date: string, time: string) {
     .eq("date", date)
     .eq("time", time);
 
-  if (error) return { error: "İptal yapılamadı." };
+  if (error) return { error: `İptal yapılamadı: ${error.message}` };
   revalidatePath("/admin");
   return {};
 }

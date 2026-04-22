@@ -12,6 +12,7 @@ type AppSettings = {
   slot_end: string;
   daily_limit: number;
   weekly_limit: number;
+  min_advance_hours: number;
 };
 
 export default function SettingsForm({ settings }: { settings: AppSettings }) {
@@ -100,6 +101,24 @@ export default function SettingsForm({ settings }: { settings: AppSettings }) {
                 className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Advance booking */}
+        <div className="bg-surface border border-border rounded-2xl px-4 py-5">
+          <p className="text-text-primary font-semibold text-sm mb-1">En Erken Rezervasyon</p>
+          <p className="text-text-secondary text-xs mb-4">
+            Şu andan en az kaç saat sonraki slotlar görünsün. 0 = kısıtlama yok.
+          </p>
+          <div className="flex-1">
+            <label className="block text-text-secondary text-xs mb-1.5">Önceden (saat)</label>
+            <input
+              type="number"
+              name="min_advance_hours"
+              defaultValue={settings.min_advance_hours}
+              min={0}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+            />
           </div>
         </div>
 

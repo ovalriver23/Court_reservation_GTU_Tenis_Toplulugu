@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { login } from "@/lib/actions/auth";
+import AnimatedBall from "@/components/AnimatedBall";
 
-export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error") === "link_expired"
+    ? "Şifre sıfırlama bağlantısının süresi dolmuş. Lütfen tekrar talep et."
+    : null;
+  const [error, setError] = useState<string | null>(urlError);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -35,13 +42,7 @@ export default function LoginPage() {
       >
         {/* Logo / Başlık */}
         <div className="mb-8 text-center">
-          <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" style={{ width: 52, height: 52, display: "block", margin: "0 auto 16px", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
-            <circle cx="30" cy="30" r="29" fill="#D0FF00" />
-            <circle cx="30" cy="30" r="29" fill="none" stroke="#AACC00" strokeWidth="1" />
-            <path d="M 8 13 C 20 22, 20 38, 8 47"  stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-            <path d="M 52 13 C 40 22, 40 38, 52 47" stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-            <ellipse cx="20" cy="16" rx="8" ry="5" fill="white" opacity="0.2" transform="rotate(-40 20 16)" />
-          </svg>
+          <AnimatedBall />
           <h1 className="text-white text-2xl font-semibold">GTU Tenis</h1>
           <p className="text-white/60 text-sm mt-1">Kort Rezervasyon Sistemi</p>
         </div>
@@ -93,7 +94,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-white/50 text-sm mt-6">
+        <div className="mt-4 text-center">
+          <Link href="/forgot-password" className="text-white/40 text-sm underline underline-offset-2">
+            Şifremi unuttum
+          </Link>
+        </div>
+
+        <p className="text-center text-white/50 text-sm mt-4">
           Hesabın yok mu?{" "}
           <Link href="/register" className="text-primary underline underline-offset-2">
             Kayıt ol
@@ -101,5 +108,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

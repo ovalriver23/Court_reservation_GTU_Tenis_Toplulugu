@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/cache";
+import PasswordChangeForm from "./PasswordChangeForm";
 
 export default async function ProfilePage() {
   const [user, profile] = await Promise.all([getUser(), getProfile()]);
   if (!user) redirect("/login");
 
   return (
-    <div className="px-4 pt-2 pb-8">
-      <h2 className="text-text-primary font-semibold text-lg mb-6">Profil</h2>
+    <div className="px-4 pt-2 pb-8 space-y-4">
+      <h2 className="text-text-primary font-semibold text-lg mb-2">Profil</h2>
 
+      {/* Kullanıcı bilgileri */}
       <div className="bg-surface border border-border rounded-2xl px-4 py-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
@@ -22,6 +24,9 @@ export default async function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Şifre değiştir */}
+      <PasswordChangeForm />
     </div>
   );
 }

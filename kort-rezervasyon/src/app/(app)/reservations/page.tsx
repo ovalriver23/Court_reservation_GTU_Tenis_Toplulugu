@@ -12,6 +12,11 @@ function formatDate(dateStr: string): string {
   return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${d.getFullYear()} — ${DAYS_TR[d.getDay()]}`;
 }
 
+function timeRange(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return `${time}-${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 export default async function ReservationsPage() {
   const user = await getUser();
   if (!user) return null;
@@ -44,7 +49,7 @@ export default async function ReservationsPage() {
             <div key={slot.id} className="bg-surface border border-primary/30 rounded-2xl px-4 py-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-text-primary font-semibold text-base">{slot.time}</p>
+                  <p className="text-text-primary font-semibold text-base">{timeRange(slot.time)}</p>
                   <p className="text-text-secondary text-xs mt-0.5">{formatDate(slot.date)}</p>
                 </div>
                 <form

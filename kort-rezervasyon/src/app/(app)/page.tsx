@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import WeekCalendar from "@/components/WeekCalendar";
 import SlotCard from "@/components/SlotCard";
 import { createClient } from "@/lib/supabase/client";
@@ -22,21 +22,22 @@ function filterVisibleSlots(slots: Slot[], date: string, settings: AppSettings |
     filtered = filtered.filter(s => s.time >= settings.slot_start && s.time <= settings.slot_end);
   }
 
+  // Sadece bugünün geçmiş saatlerini gizle; advance-lock slotları SlotCard'da göster
   const todayStr = todayString();
   if (date === todayStr) {
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    const h = now.getHours();
+    const m = now.getMinutes();
     filtered = filtered.filter((s) => {
-      const [h, m] = s.time.split(":").map(Number);
-      return h > currentHour || (h === currentHour && m >= currentMinute);
+      const [sh, sm] = s.time.split(":").map(Number);
+      return sh > h || (sh === h && sm >= m);
     });
   }
 
   return filtered;
 }
 
-type AppSettings = { slot_start: string; slot_end: string };
+type AppSettings = { slot_start: string; slot_end: string; min_advance_hours: number };
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
@@ -45,13 +46,13 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
-    supabase.from("app_settings").select("slot_start, slot_end").eq("id", 1).single()
+    supabase.from("app_settings").select("slot_start, slot_end, min_advance_hours").eq("id", 1).single()
       .then(({ data }) => { if (data) setSettings(data as AppSettings); });
   }, []);
 
@@ -64,7 +65,7 @@ export default function HomePage() {
       .order("time");
     setSlots((data as Slot[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchSlots(selectedDate);
@@ -98,36 +99,46 @@ export default function HomePage() {
     return result;
   }, [selectedDate, fetchSlots]);
 
-  const visibleSlots = filterVisibleSlots(slots, selectedDate, settings);
+  const visibleSlots = useMemo(
+    () => filterVisibleSlots(slots, selectedDate, settings),
+    [slots, selectedDate, settings]
+  );
+
+  const minAdvanceHours = settings?.min_advance_hours ?? 0;
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-3">
-        <WeekCalendar selected={selectedDate} onChange={setSelectedDate} />
+      <div className="pt-4 pb-3">
+        <div className="px-4 max-w-4xl mx-auto">
+          <WeekCalendar selected={selectedDate} onChange={setSelectedDate} />
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-6">
-        {loading ? (
-          <div className="flex justify-center pt-12">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : visibleSlots.length === 0 ? (
-          <div className="text-center pt-12">
-            <p className="text-text-secondary text-sm">Bu gün için uygun slot yok.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {visibleSlots.map((slot) => (
-              <SlotCard
-                key={slot.id}
-                slot={slot}
-                currentUserId={userId}
-                onReserve={handleReserve}
-                onCancel={handleCancel}
-              />
-            ))}
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto pb-6">
+        <div className="px-4 max-w-4xl mx-auto">
+          {loading ? (
+            <div className="flex justify-center pt-12">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : visibleSlots.length === 0 ? (
+            <div className="text-center pt-12">
+              <p className="text-text-secondary text-sm">Bu gün için uygun slot yok.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {visibleSlots.map((slot) => (
+                <SlotCard
+                  key={slot.id}
+                  slot={slot}
+                  currentUserId={userId}
+                  minAdvanceHours={minAdvanceHours}
+                  onReserve={handleReserve}
+                  onCancel={handleCancel}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

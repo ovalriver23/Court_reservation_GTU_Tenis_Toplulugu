@@ -1,3 +1,5 @@
+import { logout } from "@/lib/actions/auth";
+
 export default function PendingPage() {
   return (
     <main className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -12,13 +14,10 @@ export default function PendingPage() {
           Hesabın oluşturuldu. Kort rezervasyonu yapabilmek için admin onayı gerekiyor.
           Onaylandıktan sonra giriş yapabilirsin.
         </p>
-        <form action="/api/auth/signout" method="post" className="mt-8">
-          <a
-            href="/login"
-            className="text-text-secondary text-sm underline underline-offset-2"
-          >
-            Giriş sayfasına dön
-          </a>
+        <form action={logout} className="mt-8">
+          <button type="submit" className="text-text-secondary text-sm underline underline-offset-2">
+            Çıkış yap ve giriş sayfasına dön
+          </button>
         </form>
       </div>
     </main>

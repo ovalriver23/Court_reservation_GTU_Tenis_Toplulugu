@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { approveUser, rejectUser, adminCancelSlot } from "@/lib/actions/admin";
 import SettingsForm from "@/components/SettingsForm";
 import type { Slot } from "@/types";
@@ -12,13 +12,18 @@ function formatDate(dateStr: string): string {
   return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} — ${DAYS_TR[d.getDay()]}`;
 }
 
+function timeRange(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return `${time}-${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 function todayString(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
 type User = { id: string; name: string; email: string; approved: boolean; created_at: string };
-type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number };
+type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number; min_advance_hours: number };
 
 const TABS = [
   { key: "overview",     label: "Özet" },
@@ -27,23 +32,27 @@ const TABS = [
   { key: "settings",     label: "Ayarlar" },
 ];
 
-export default async function AdminPage({ searchParams }: { searchParams: { tab?: string } }) {
-  const tab = searchParams?.tab ?? "overview";
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: { tab?: string; userId?: string };
+}) {
+  const tab    = searchParams?.tab    ?? "overview";
+  const userId = searchParams?.userId ?? null;
   const supabase = await createClient();
   const today = todayString();
 
-  // Always fetch pending count (needed for the badge on every tab)
   const { count: pendingCount } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
     .eq("approved", false)
     .eq("is_admin", false);
 
-  // Tab-specific fetches — only runs what the active tab needs
   let approvedCount = 0, todayCount = 0, totalCount = 0;
   let users: User[] = [];
   let reservations: Slot[] = [];
-  let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0 };
+  let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, min_advance_hours: 0 };
+  let filterUserName: string | null = null;
 
   if (tab === "overview") {
     const [r1, r2, r3] = await Promise.all([
@@ -52,35 +61,64 @@ export default async function AdminPage({ searchParams }: { searchParams: { tab?
       supabase.from("slots").select("*", { count: "exact", head: true }).not("player1_id", "is", null),
     ]);
     approvedCount = r1.count ?? 0;
-    todayCount = r2.count ?? 0;
-    totalCount = r3.count ?? 0;
+    todayCount    = r2.count ?? 0;
+    totalCount    = r3.count ?? 0;
   }
 
   if (tab === "users") {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, name, email, approved, created_at")
-      .eq("is_admin", false)
-      .order("created_at", { ascending: false });
-    users = (data as User[]) ?? [];
+    const admin = createAdminClient();
+    const [usersRes, slotsRes] = await Promise.all([
+      admin
+        .from("profiles")
+        .select("id, name, email, approved, created_at")
+        .eq("is_admin", false)
+        .order("created_at", { ascending: false }),
+      admin
+        .from("slots")
+        .select("player1_id")
+        .not("player1_id", "is", null),
+    ]);
+    users = (usersRes.data as User[]) ?? [];
+    // Kullanıcı başına rezervasyon sayısını hesapla
+    const slotCounts: Record<string, number> = {};
+    for (const s of (slotsRes.data ?? [])) {
+      const pid = (s as { player1_id: string }).player1_id;
+      slotCounts[pid] = (slotCounts[pid] ?? 0) + 1;
+    }
+    // Kullanıcı nesnelerine count ekle (tip genişletmesi olmadan obj spread)
+    users = users.map(u => ({ ...u, reservationCount: slotCounts[u.id] ?? 0 } as User & { reservationCount: number }));
   }
 
   if (tab === "reservations") {
-    const { data } = await supabase
+    let query = supabase
       .from("slots")
       .select("*")
       .not("player1_id", "is", null)
       .order("date")
       .order("time");
+
+    if (userId) query = query.eq("player1_id", userId);
+
+    const { data } = await query;
     reservations = (data as Slot[]) ?? [];
+
+    // Filtre varsa kullanıcı adını bul
+    if (userId && reservations.length > 0) {
+      filterUserName = reservations[0].player1_name ?? null;
+    } else if (userId) {
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", userId)
+        .single<{ name: string }>();
+      filterUserName = p?.name ?? null;
+    }
   }
 
   if (tab === "settings") {
     const { data } = await supabase.from("app_settings").select("*").eq("id", 1).single();
     if (data) settings = data as AppSettings;
   }
-
-  const pending = users.filter(u => !u.approved);
 
   return (
     <div className="flex flex-col">
@@ -111,10 +149,10 @@ export default async function AdminPage({ searchParams }: { searchParams: { tab?
         {/* OVERVIEW */}
         {tab === "overview" && (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Toplam Üye" value={approvedCount} />
-            <StatCard label="Bekleyen" value={pendingCount ?? 0} highlight={(pendingCount ?? 0) > 0} />
-            <StatCard label="Bugün Rezervasyon" value={todayCount} />
-            <StatCard label="Aktif Rezervasyon" value={totalCount} />
+            <StatCard label="Toplam Üye"        value={approvedCount} />
+            <StatCard label="Bekleyen"           value={pendingCount ?? 0} highlight={(pendingCount ?? 0) > 0} />
+            <StatCard label="Bugün Rezervasyon"  value={todayCount} />
+            <StatCard label="Aktif Rezervasyon"  value={totalCount} />
           </div>
         )}
 
@@ -123,7 +161,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { tab?
           <div className="flex flex-col gap-3">
             {users.length === 0 ? (
               <p className="text-text-secondary text-sm text-center pt-4">Kayıtlı üye yok.</p>
-            ) : users.map(u => (
+            ) : (users as (User & { reservationCount: number })[]).map(u => (
               <div key={u.id} className="bg-surface border border-border rounded-2xl px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -134,10 +172,23 @@ export default async function AdminPage({ searchParams }: { searchParams: { tab?
                       }`}>
                         {u.approved ? "Onaylı" : "Bekliyor"}
                       </span>
+                      {u.reservationCount > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-border/40 text-text-secondary flex-shrink-0">
+                          {u.reservationCount} rezervasyon
+                        </span>
+                      )}
                     </div>
                     <p className="text-text-secondary text-xs mt-0.5 truncate">{u.email}</p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
+                    {u.reservationCount > 0 && (
+                      <Link
+                        href={`/admin?tab=reservations&userId=${u.id}`}
+                        className="px-3 py-1.5 border border-border text-text-secondary text-xs rounded-xl active:scale-95 transition-transform"
+                      >
+                        Gör
+                      </Link>
+                    )}
                     {!u.approved && (
                       <form action={async () => { "use server"; await approveUser(u.id); }}>
                         <button type="submit" className="px-3 py-1.5 bg-primary text-background text-xs font-semibold rounded-xl active:scale-95 transition-transform">
@@ -160,6 +211,18 @@ export default async function AdminPage({ searchParams }: { searchParams: { tab?
         {/* RESERVATIONS */}
         {tab === "reservations" && (
           <div className="flex flex-col gap-3">
+            {/* Filtre banner'ı */}
+            {userId && (
+              <div className="flex items-center justify-between bg-surface border border-primary/30 rounded-xl px-4 py-2.5">
+                <p className="text-text-secondary text-xs">
+                  Filtre: <span className="text-text-primary font-medium">{filterUserName ?? "Kullanıcı"}</span>
+                </p>
+                <Link href="/admin?tab=reservations" className="text-primary text-xs underline underline-offset-2">
+                  Tümünü Göster
+                </Link>
+              </div>
+            )}
+
             {reservations.length === 0 ? (
               <p className="text-text-secondary text-sm text-center pt-4">Aktif rezervasyon yok.</p>
             ) : reservations.map(slot => (
@@ -168,7 +231,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { tab?
                   <div className="min-w-0">
                     <p className="text-text-primary font-semibold truncate">{slot.player1_name}</p>
                     <p className="text-text-secondary text-xs mt-0.5">
-                      {slot.time} — {formatDate(slot.date)}
+                      {timeRange(slot.time)} — {formatDate(slot.date)}
                     </p>
                   </div>
                   <form action={async () => { "use server"; await adminCancelSlot(slot.date, slot.time); }}>

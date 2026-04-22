@@ -50,9 +50,13 @@ export default function HamburgerMenu({ isAdmin = false }: { isAdmin?: boolean }
         {/* Drawer header */}
         <div className="flex items-center justify-between px-5 pt-12 pb-8">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-background font-bold text-sm">T</span>
-            </div>
+            <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" width="32" height="32" style={{ display: "block", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.4))" }}>
+              <circle cx="30" cy="30" r="29" fill="#D0FF00" />
+              <circle cx="30" cy="30" r="29" fill="none" stroke="#AACC00" strokeWidth="1" />
+              <path d="M 8 13 C 20 22, 20 38, 8 47"  stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+              <path d="M 52 13 C 40 22, 40 38, 52 47" stroke="#1a1a1a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+              <ellipse cx="20" cy="16" rx="8" ry="5" fill="white" opacity="0.2" transform="rotate(-40 20 16)" />
+            </svg>
             <span className="text-text-primary font-semibold">GTU Tenis</span>
           </div>
           <button
