@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "@/lib/theme";
 
 export default function AnimatedBall() {
   const [animating, setAnimating] = useState(false);
+  const { nextTheme } = useTheme();
 
   function handleClick() {
     if (animating) return;
+    nextTheme();
     setAnimating(true);
     setTimeout(() => setAnimating(false), 1600);
   }

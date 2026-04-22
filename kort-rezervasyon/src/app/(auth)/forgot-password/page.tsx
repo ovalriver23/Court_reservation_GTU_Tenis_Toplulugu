@@ -57,41 +57,43 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-white/70 text-sm mb-1.5" htmlFor="email">
-                E-posta
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
-                placeholder="ad@example.com"
-                className="w-full rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
-              />
-            </div>
+          <>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-white/70 text-sm mb-1.5" htmlFor="email">
+                  E-posta
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="ad@example.com"
+                  className="w-full rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
+                />
+              </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-background font-semibold py-3 rounded-xl transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Gönderiliyor..." : "Sıfırlama Bağlantısı Gönder"}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-primary text-background font-semibold py-3 rounded-xl transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Gönderiliyor..." : "Sıfırlama Bağlantısı Gönder"}
+              </button>
+            </form>
+
+            <p className="text-center text-white/50 text-sm mt-6">
+              <Link href="/login" className="underline underline-offset-2">
+                Giriş sayfasına dön
+              </Link>
+            </p>
+          </>
         )}
-
-        <p className="text-center text-white/50 text-sm mt-6">
-          <Link href="/login" className="underline underline-offset-2">
-            Giriş sayfasına dön
-          </Link>
-        </p>
       </div>
     </main>
   );

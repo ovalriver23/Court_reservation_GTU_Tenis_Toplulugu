@@ -133,6 +133,28 @@ export async function refreshSlots() {
   return {};
 }
 
+export async function toggleAdmin(userId: string) {
+  const user = await requireAdmin();
+  if (!user) return { error: "Yetkisiz." };
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userId)
+    .single<{ is_admin: boolean }>();
+
+  const newIsAdmin = !profile?.is_admin;
+  const { error } = await admin
+    .from("profiles")
+    .update({ is_admin: newIsAdmin, ...(newIsAdmin ? { approved: true } : {}) })
+    .eq("id", userId);
+
+  if (error) return { error: `Admin durumu değiştirilemedi: ${error.message}` };
+  revalidatePath("/admin");
+  return {};
+}
+
 export async function adminCancelSlot(date: string, time: string) {
   const user = await requireAdmin();
   if (!user) return { error: "Yetkisiz." };
