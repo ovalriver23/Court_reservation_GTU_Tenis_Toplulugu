@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { adminReserveSlot } from "@/lib/actions/admin";
+import { adminReserveSlotRange } from "@/lib/actions/admin";
 
 function todayString() {
   const d = new Date();
@@ -19,13 +19,14 @@ function generateTimes(slotStart: string, slotEnd: string): string[] {
 }
 
 export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: string; slotEnd: string }) {
-  const [open, setOpen]     = useState(false);
-  const [date, setDate]     = useState(todayString());
-  const [time, setTime]     = useState(slotStart);
-  const [name, setName]     = useState("Turnuva");
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [open, setOpen]           = useState(false);
+  const [date, setDate]           = useState(todayString());
+  const [startTime, setStartTime] = useState(slotStart);
+  const [endTime, setEndTime]     = useState(slotEnd);
+  const [name, setName]           = useState("Turnuva");
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const times = generateTimes(slotStart, slotEnd);
 
@@ -33,21 +34,21 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(false);
-    const result = await adminReserveSlot(date, time, name);
+    setSuccessMsg(null);
+    const result = await adminReserveSlotRange(date, date, startTime, endTime, name);
     setLoading(false);
     if (result?.error) {
       setError(result.error);
     } else {
-      setSuccess(true);
-      setTimeout(() => { setSuccess(false); setOpen(false); }, 1500);
+      setSuccessMsg(`${result.count} slot rezerve edildi.`);
+      setTimeout(() => { setSuccessMsg(null); setOpen(false); }, 2000);
     }
   }
 
   return (
     <div className="mb-4">
       <button
-        onClick={() => { setOpen(o => !o); setError(null); setSuccess(false); }}
+        onClick={() => { setOpen(o => !o); setError(null); setSuccessMsg(null); }}
         className="w-full flex items-center justify-between bg-surface border border-border rounded-2xl px-4 py-3 text-sm text-text-secondary transition-all active:scale-95"
       >
         <span className="font-medium text-text-primary">Manuel Rezervasyon</span>
@@ -59,29 +60,43 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
       {open && (
         <div className="mt-2 bg-surface border border-border rounded-2xl px-4 py-4">
           <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-text-secondary text-xs mb-1.5">Tarih</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  required
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-text-secondary text-xs mb-1.5">Saat</label>
+
+            {/* Tarih */}
+            <div>
+              <label className="block text-text-secondary text-xs mb-1.5">Tarih</label>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                required
+                style={{ colorScheme: "dark" }}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+              />
+            </div>
+
+            {/* Saat Aralığı */}
+            <div>
+              <label className="block text-text-secondary text-xs mb-1.5">Saat Aralığı</label>
+              <div className="flex gap-2 items-center">
                 <select
-                  value={time}
-                  onChange={e => setTime(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+                >
+                  {times.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <span className="text-text-secondary text-xs shrink-0">—</span>
+                <select
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
                 >
                   {times.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
 
+            {/* İsim */}
             <div>
               <label className="block text-text-secondary text-xs mb-1.5">İsim</label>
               <input
@@ -95,7 +110,7 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
             </div>
 
             {error && <p className="text-red-400 text-xs">{error}</p>}
-            {success && <p className="text-primary text-xs font-medium">Rezervasyon oluşturuldu.</p>}
+            {successMsg && <p className="text-primary text-xs font-medium">{successMsg}</p>}
 
             <button
               type="submit"

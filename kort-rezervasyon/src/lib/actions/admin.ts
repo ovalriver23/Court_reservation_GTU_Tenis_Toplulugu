@@ -180,6 +180,42 @@ export async function adminReserveSlot(date: string, time: string, name: string)
   return {};
 }
 
+export async function adminReserveSlotRange(
+  startDate: string,
+  endDate: string,
+  startTime: string,
+  endTime: string,
+  name: string
+) {
+  const user = await requireAdmin();
+  if (!user) return { error: "Yetkisiz." };
+
+  if (!name.trim()) return { error: "İsim boş olamaz." };
+  if (!startDate || !endDate || !startTime || !endTime) return { error: "Tüm alanlar gerekli." };
+  if (startDate > endDate) return { error: "Başlangıç tarihi bitiş tarihinden sonra olamaz." };
+  if (startTime > endTime) return { error: "Başlangıç saati bitiş saatinden sonra olamaz." };
+
+  const admin = createAdminClient();
+
+  const { data: updated, error } = await admin
+    .from("slots")
+    .update({ player1_id: user.id, player1_name: name.trim() })
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .gte("time", startTime)
+    .lte("time", endTime)
+    .is("player1_id", null)
+    .select("id");
+
+  if (error) return { error: `Rezervasyon yapılamadı: ${error.message}` };
+  const count = updated?.length ?? 0;
+  if (count === 0) return { error: "Belirtilen aralıkta boş slot bulunamadı." };
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { count };
+}
+
 export async function adminCancelSlot(date: string, time: string) {
   const user = await requireAdmin();
   if (!user) return { error: "Yetkisiz." };
