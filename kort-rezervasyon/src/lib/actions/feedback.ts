@@ -2,8 +2,7 @@
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FEEDBACK_RECIPIENTS = [
-  "tuanaak45@gmail.com", // TODO: değiştir
-  "akkopru_ferhat65@outlook.com",  // TODO: değiştir
+  "tuanaak45@gmail.com", // TODO: değiştir 
 ];
 
 export async function sendFeedback(message: string, senderName: string) {

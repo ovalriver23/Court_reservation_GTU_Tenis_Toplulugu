@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { ReserveSlotResult } from "@/types";
 
@@ -75,6 +76,7 @@ export async function reserveSlot(
     return { error: result.error ?? "Rezervasyon alınamadı." };
   }
 
+  revalidatePath("/reservations");
   return {};
 }
 

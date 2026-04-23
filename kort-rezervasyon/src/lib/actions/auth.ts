@@ -67,6 +67,10 @@ export async function register(formData: FormData) {
     return { error: "Kayıt başarısız. Lütfen tekrar dene." };
   }
 
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    return { error: "Bu e-posta zaten kayıtlı." };
+  }
+
   if (data.user) {
     const admin = createAdminClient();
     await admin.from("profiles").upsert(

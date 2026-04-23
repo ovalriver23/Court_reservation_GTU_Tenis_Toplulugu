@@ -87,17 +87,15 @@ export default function HomePage() {
     slotId: string, date: string, time: string
   ) => {
     const result = await reserveSlot(slotId, date, time);
-    if (!result.error) fetchSlots(selectedDate);
     return result;
-  }, [selectedDate, fetchSlots]);
+  }, []);
 
   const handleCancel = useCallback(async (
     slotId: string, date: string, time: string
   ) => {
     const result = await cancelSlot(slotId, date, time);
-    if (!result.error) fetchSlots(selectedDate);
     return result;
-  }, [selectedDate, fetchSlots]);
+  }, []);
 
   const visibleSlots = useMemo(
     () => filterVisibleSlots(slots, selectedDate, settings),
