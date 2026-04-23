@@ -29,6 +29,7 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [picking, setPicking]     = useState(false);
+  const [expanded, setExpanded]   = useState(false);
   const [query, setQuery]         = useState("");
   const [results, setResults]     = useState<{ id: string; name: string }[]>([]);
   const [partner, setPartner]     = useState<{ id: string; name: string } | null>(null);
@@ -38,6 +39,7 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
   const isBooked   = !!slot.player1_id;
   const isMine     = slot.player1_id === currentUserId || slot.player2_id === currentUserId;
   const locked     = !isBooked && isAdvanceLocked(slot.date, slot.time, minAdvanceHours);
+  const hasNames   = !!(slot.player1_name || slot.player2_name);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -83,14 +85,18 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
 
   return (
     <div className={`bg-surface border rounded-2xl px-4 py-3 transition-all ${isMine ? "border-primary/50" : "border-border"}`}>
-      <div className="flex items-center justify-between gap-3">
+      <div
+        className="flex items-center justify-between gap-3"
+        onClick={() => { if (isBooked && hasNames && !picking) setExpanded(e => !e); }}
+        style={{ cursor: isBooked && hasNames && !picking ? "pointer" : "default" }}
+      >
         <span className="text-text-primary font-semibold text-base shrink-0">{timeRange(slot.time)}</span>
 
         {isMine ? (
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs text-text-secondary truncate">{displayNames}</span>
+            {!expanded && <span className="text-xs text-text-secondary truncate">{displayNames}</span>}
             <button
-              onClick={handleCancel}
+              onClick={e => { e.stopPropagation(); handleCancel(); }}
               disabled={loading}
               className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 disabled:opacity-50 shrink-0"
             >
@@ -98,9 +104,18 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
             </button>
           </div>
         ) : isBooked ? (
-          <span className="text-xs text-text-secondary truncate max-w-[160px] text-right">
-            {displayNames || "Dolu"}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {!expanded && (
+              <span className="text-xs text-text-secondary truncate max-w-[140px] text-right">
+                {displayNames || "Dolu"}
+              </span>
+            )}
+            {hasNames && (
+              <svg className={`shrink-0 w-3.5 h-3.5 text-text-secondary transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </div>
         ) : locked ? (
           <button disabled className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary opacity-40 cursor-not-allowed shrink-0">
             Rezerve
@@ -122,6 +137,23 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
           </button>
         )}
       </div>
+
+      {expanded && hasNames && (
+        <div className="mt-3 rounded-xl px-3 py-2.5 space-y-1.5" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          {slot.player1_name && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/30 uppercase tracking-wider shrink-0 whitespace-nowrap">Oyuncu 1</span>
+              <span className="text-white/90 text-sm font-medium">{slot.player1_name}</span>
+            </div>
+          )}
+          {slot.player2_name && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/30 uppercase tracking-wider shrink-0 whitespace-nowrap">Oyuncu 2</span>
+              <span className="text-white/90 text-sm font-medium">{slot.player2_name}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {locked && (
         <p className="text-text-secondary text-xs mt-1.5 text-right">
