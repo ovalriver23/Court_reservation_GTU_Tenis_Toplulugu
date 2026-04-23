@@ -69,16 +69,12 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Onay ve admin kontrolü
+  // Admin kontrolü
   const { data: profile } = await supabase
     .from("profiles")
-    .select("approved, is_admin")
+    .select("is_admin")
     .eq("id", user.id)
-    .single<{ approved: boolean; is_admin: boolean }>();
-
-  if (profile && !profile.approved && !profile.is_admin && pathname !== "/pending") {
-    return NextResponse.redirect(new URL("/pending", request.url));
-  }
+    .single<{ is_admin: boolean }>();
 
   if (pathname.startsWith("/admin") && !profile?.is_admin) {
     return NextResponse.redirect(new URL("/", request.url));

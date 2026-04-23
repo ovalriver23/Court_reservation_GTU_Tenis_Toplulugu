@@ -21,19 +21,6 @@ export async function login(formData: FormData) {
     return { error: "Giriş başarısız. Lütfen tekrar dene." };
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("approved, is_admin")
-      .eq("id", user.id)
-      .single<{ approved: boolean; is_admin: boolean }>();
-
-    if (profile && !profile.approved && !profile.is_admin) {
-      redirect("/pending");
-    }
-  }
-
   redirect("/");
 }
 
@@ -74,7 +61,7 @@ export async function register(formData: FormData) {
   if (data.user) {
     const admin = createAdminClient();
     await admin.from("profiles").upsert(
-      { id: data.user.id, name, email, approved: false },
+      { id: data.user.id, name, email, approved: true },
       { onConflict: "id" }
     );
   }
@@ -100,7 +87,7 @@ export async function verifyEmail(email: string, token: string) {
     return { error: "Kod hatalı veya süresi dolmuş. Lütfen tekrar dene." };
   }
 
-  redirect("/pending");
+  redirect("/");
 }
 
 export async function resendVerification(email: string) {

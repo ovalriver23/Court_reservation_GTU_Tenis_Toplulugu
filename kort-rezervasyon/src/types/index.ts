@@ -13,6 +13,8 @@ export type Slot = {
   time: string;
   player1_id: string | null;
   player1_name: string | null;
+  player2_id: string | null;
+  player2_name: string | null;
   created_at: string;
 };
 

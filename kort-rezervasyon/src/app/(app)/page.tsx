@@ -84,18 +84,20 @@ export default function HomePage() {
   }, [selectedDate, fetchSlots]);
 
   const handleReserve = useCallback(async (
-    slotId: string, date: string, time: string
+    slotId: string, date: string, time: string, player2Id?: string | null
   ) => {
-    const result = await reserveSlot(slotId, date, time);
+    const result = await reserveSlot(slotId, date, time, player2Id ?? null);
+    if (!result.error) fetchSlots(selectedDate);
     return result;
-  }, []);
+  }, [selectedDate, fetchSlots]);
 
   const handleCancel = useCallback(async (
     slotId: string, date: string, time: string
   ) => {
     const result = await cancelSlot(slotId, date, time);
+    if (!result.error) fetchSlots(selectedDate);
     return result;
-  }, []);
+  }, [selectedDate, fetchSlots]);
 
   const visibleSlots = useMemo(
     () => filterVisibleSlots(slots, selectedDate, settings),

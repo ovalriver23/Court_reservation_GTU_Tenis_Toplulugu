@@ -7,7 +7,8 @@ import type { ReserveSlotResult } from "@/types";
 export async function reserveSlot(
   _slotId: string,
   date: string,
-  time: string
+  time: string,
+  player2Id: string | null = null
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
 
@@ -22,40 +23,16 @@ export async function reserveSlot(
 
   if (!profile) return { error: "Profil bulunamadı." };
 
-  // Check limits from settings
-  const { data: settings } = await supabase
-    .from("app_settings")
-    .select("daily_limit, weekly_limit")
-    .eq("id", 1)
-    .single<{ daily_limit: number; weekly_limit: number }>();
-
-  const dailyLimit = settings?.daily_limit ?? 0;
-  const weeklyLimit = settings?.weekly_limit ?? 0;
-
-  if (dailyLimit > 0) {
-    const { count } = await supabase
-      .from("slots")
-      .select("*", { count: "exact", head: true })
-      .eq("player1_id", user.id)
-      .eq("date", date);
-    if ((count ?? 0) >= dailyLimit)
-      return { error: "Günlük rezervasyon limitine ulaştınız." };
-  }
-
-  if (weeklyLimit > 0) {
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - 6);
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    const { count } = await supabase
-      .from("slots")
-      .select("*", { count: "exact", head: true })
-      .eq("player1_id", user.id)
-      .gte("date", fmt(weekStart))
-      .lte("date", fmt(now));
-    if ((count ?? 0) >= weeklyLimit)
-      return { error: "Haftalık rezervasyon limitine ulaştınız." };
+  let player2Name: string | null = null;
+  if (player2Id) {
+    const admin = createAdminClient();
+    const { data: p2 } = await admin
+      .from("profiles")
+      .select("name")
+      .eq("id", player2Id)
+      .single<{ name: string }>();
+    if (!p2) return { error: "Seçilen kişi bulunamadı." };
+    player2Name = p2.name;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,6 +41,8 @@ export async function reserveSlot(
     p_time: time,
     p_user_id: user.id,
     p_user_name: profile.name,
+    p2_user_id: player2Id ?? null,
+    p2_user_name: player2Name ?? null,
   });
 
   if (error) return { error: error.message };
@@ -73,6 +52,8 @@ export async function reserveSlot(
     if (result.error === "slot_full") return { error: "Bu saat dolu, başka bir saat seç." };
     if (result.error === "daily_limit_exceeded") return { error: "Günlük rezervasyon limitine ulaştınız." };
     if (result.error === "weekly_limit_exceeded") return { error: "Haftalık rezervasyon limitine ulaştınız." };
+    if (result.error === "partner_daily_limit_exceeded") return { error: "Seçtiğin kişinin günlük rezervasyon hakkı dolmuş." };
+    if (result.error === "partner_weekly_limit_exceeded") return { error: "Seçtiğin kişinin haftalık rezervasyon hakkı dolmuş." };
     return { error: result.error ?? "Rezervasyon alınamadı." };
   }
 
@@ -91,18 +72,33 @@ export async function cancelSlot(
 
   const admin = createAdminClient();
 
-  // Ownership kontrolü ve update aynı sorguda — aradaki aralıkta başka birinin
-  // slotu almasına karşı atomic güvence sağlar
-  const { data: updated, error } = await admin
+  // Player1 olarak iptal et — ikisi de temizlenir
+  const { data: updated1 } = await admin
     .from("slots")
-    .update({ player1_id: null, player1_name: null })
+    .update({ player1_id: null, player1_name: null, player2_id: null, player2_name: null })
     .eq("date", date)
     .eq("time", time)
     .eq("player1_id", user.id)
     .select("id");
 
+  if (updated1 && updated1.length > 0) {
+    revalidatePath("/reservations");
+    return {};
+  }
+
+  // Player2 olarak iptal et — sadece kendini çıkarır
+  const { data: updated2, error } = await admin
+    .from("slots")
+    .update({ player2_id: null, player2_name: null })
+    .eq("date", date)
+    .eq("time", time)
+    .eq("player2_id", user.id)
+    .select("id");
+
   if (error) return { error: `İptal yapılamadı: ${error.message}` };
-  if (!updated || updated.length === 0)
+  if (!updated2 || updated2.length === 0)
     return { error: "Bu rezervasyon size ait değil ya da zaten iptal edilmiş." };
+
+  revalidatePath("/reservations");
   return {};
 }

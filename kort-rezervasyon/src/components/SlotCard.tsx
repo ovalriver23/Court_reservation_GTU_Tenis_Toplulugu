@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { searchUsers } from "@/lib/actions/users";
 import type { Slot } from "@/types";
 
 function timeRange(time: string): string {
@@ -20,23 +21,48 @@ interface SlotCardProps {
   slot: Slot;
   currentUserId: string;
   minAdvanceHours: number;
-  onReserve: (slotId: string, date: string, time: string) => Promise<{ error?: string }>;
+  onReserve: (slotId: string, date: string, time: string, player2Id?: string | null) => Promise<{ error?: string }>;
   onCancel: (slotId: string, date: string, time: string) => Promise<{ error?: string }>;
 }
 
 export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReserve, onCancel }: SlotCardProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [picking, setPicking]     = useState(false);
+  const [query, setQuery]         = useState("");
+  const [results, setResults]     = useState<{ id: string; name: string }[]>([]);
+  const [partner, setPartner]     = useState<{ id: string; name: string } | null>(null);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isBooked = !!slot.player1_id;
-  const isMine = slot.player1_id === currentUserId;
-  const locked = !isBooked && !isMine && isAdvanceLocked(slot.date, slot.time, minAdvanceHours);
+  const isBooked   = !!slot.player1_id;
+  const isMine     = slot.player1_id === currentUserId || slot.player2_id === currentUserId;
+  const locked     = !isBooked && isAdvanceLocked(slot.date, slot.time, minAdvanceHours);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.trim().length < 2) { setResults([]); return; }
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      const res = await searchUsers(query);
+      setResults(res);
+      setSearching(false);
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
 
   async function handleReserve() {
     setError(null);
     setLoading(true);
-    const result = await onReserve(slot.id, slot.date, slot.time);
-    if (result.error) setError(result.error === "slot_full" ? "Bu slot dolu." : result.error);
+    const result = await onReserve(slot.id, slot.date, slot.time, partner?.id ?? null);
+    if (result.error) {
+      setError(result.error);
+      setLoading(false);
+    } else {
+      setPicking(false);
+      setPartner(null);
+      setQuery("");
+    }
     setLoading(false);
   }
 
@@ -47,39 +73,52 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
     setLoading(false);
   }
 
+  function handlePickPartner(u: { id: string; name: string }) {
+    setPartner(u);
+    setQuery("");
+    setResults([]);
+  }
+
+  const displayNames = [slot.player1_name, slot.player2_name].filter(Boolean).join(" & ");
+
   return (
-    <div className={`bg-surface border rounded-2xl px-4 py-3 transition-all
-      ${isMine ? "border-primary/50" : "border-border"}`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-text-primary font-semibold text-base">{timeRange(slot.time)}</span>
+    <div className={`bg-surface border rounded-2xl px-4 py-3 transition-all ${isMine ? "border-primary/50" : "border-border"}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-text-primary font-semibold text-base shrink-0">{timeRange(slot.time)}</span>
 
         {isMine ? (
-          <button
-            onClick={handleCancel}
-            disabled={loading}
-            className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 disabled:opacity-50"
-          >
-            {loading ? "..." : "İptal"}
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs text-text-secondary truncate">{displayNames}</span>
+            <button
+              onClick={handleCancel}
+              disabled={loading}
+              className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 disabled:opacity-50 shrink-0"
+            >
+              {loading ? "..." : "İptal"}
+            </button>
+          </div>
         ) : isBooked ? (
-          <span className="text-xs text-text-secondary px-3 py-1.5 truncate max-w-[140px] text-right">
-            {slot.player1_name ?? "Dolu"}
+          <span className="text-xs text-text-secondary truncate max-w-[160px] text-right">
+            {displayNames || "Dolu"}
           </span>
         ) : locked ? (
-          <button
-            disabled
-            className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary opacity-40 cursor-not-allowed"
-          >
+          <button disabled className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary opacity-40 cursor-not-allowed shrink-0">
             Rezerve
+          </button>
+        ) : picking ? (
+          <button
+            onClick={() => { setPicking(false); setPartner(null); setQuery(""); setError(null); }}
+            className="text-xs text-text-secondary underline underline-offset-2 shrink-0"
+          >
+            Vazgeç
           </button>
         ) : (
           <button
-            onClick={handleReserve}
+            onClick={() => setPicking(true)}
             disabled={loading}
-            className="text-sm px-4 py-1.5 rounded-xl bg-primary text-background font-semibold transition-all active:scale-95 disabled:opacity-50"
+            className="text-sm px-4 py-1.5 rounded-xl bg-primary text-background font-semibold transition-all active:scale-95 disabled:opacity-50 shrink-0"
           >
-            {loading ? "..." : "Rezerve"}
+            Rezerve
           </button>
         )}
       </div>
@@ -89,6 +128,58 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
           {minAdvanceHours} saat içindeki saatlere rezervasyon yapılamaz
         </p>
       )}
+
+      {picking && (
+        <div className="mt-3 space-y-2">
+          {partner ? (
+            <div className="flex items-center justify-between bg-primary/10 border border-primary/30 rounded-xl px-3 py-2">
+              <span className="text-sm text-primary font-medium">{partner.name}</span>
+              <button onClick={() => setPartner(null)} className="text-text-secondary text-xs underline underline-offset-2">
+                Kaldır
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Arkadaş ara..."
+                className="w-full rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-primary"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+              {searching && (
+                <div className="absolute right-3 top-2.5">
+                  <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {results.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 rounded-xl overflow-hidden shadow-lg" style={{ background: "#1c1c1c", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  {results.map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => handlePickPartner(u)}
+                      className="w-full text-left px-3 py-2 text-sm text-white/80 transition-colors"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      {u.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={handleReserve}
+            disabled={loading || !partner}
+            className="w-full bg-primary text-background text-sm font-semibold py-2 rounded-xl transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? "Rezerve ediliyor..." : partner ? `${partner.name} ile Rezerve Et` : "Önce arkadaş seç"}
+          </button>
+        </div>
+      )}
+
       {error && <p className="text-red-400 text-xs mt-2 text-right">{error}</p>}
     </div>
   );

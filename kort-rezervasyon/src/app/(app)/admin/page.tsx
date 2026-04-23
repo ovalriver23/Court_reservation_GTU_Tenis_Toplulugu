@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { approveUser, rejectUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
+import { rejectUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
 import SettingsForm from "@/components/SettingsForm";
 import type { Slot } from "@/types";
 
@@ -45,14 +45,9 @@ export default async function AdminPage({
   const admin    = createAdminClient();
   const today    = todayString();
 
-  // Admin client kullanarak gerçek sayıyı al (RLS bypass)
-  const { count: pendingCount } = await admin
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("approved", false)
-    .neq("is_admin", true);
 
   let approvedCount = 0, todayCount = 0, totalCount = 0;
+  const pendingCount = 0;
   let users: User[] = [];
   let reservations: Slot[] = [];
   let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, min_advance_hours: 0 };
@@ -134,11 +129,6 @@ export default async function AdminPage({
             }`}
           >
             {t.label}
-            {t.key === "users" && (pendingCount ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary border-2 border-background rounded-full text-background text-[10px] font-bold flex items-center justify-center">
-                {pendingCount}
-              </span>
-            )}
           </Link>
         ))}
       </div>
@@ -148,8 +138,7 @@ export default async function AdminPage({
         {/* OVERVIEW */}
         {tab === "overview" && (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Toplam Üye"        value={approvedCount} />
-            <StatCard label="Bekleyen"           value={pendingCount ?? 0} highlight={(pendingCount ?? 0) > 0} />
+            <StatCard label="Toplam Üye"         value={approvedCount} />
             <StatCard label="Bugün Rezervasyon"  value={todayCount} />
             <StatCard label="Aktif Rezervasyon"  value={totalCount} />
           </div>
@@ -171,11 +160,6 @@ export default async function AdminPage({
                           Admin
                         </span>
                       )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                        u.approved ? "bg-primary/15 text-primary" : "bg-yellow-500/15 text-yellow-400"
-                      }`}>
-                        {u.approved ? "Onaylı" : "Bekliyor"}
-                      </span>
                       {(u as User & { reservationCount: number }).reservationCount > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-border/40 text-text-secondary flex-shrink-0">
                           {(u as User & { reservationCount: number }).reservationCount} rezervasyon
@@ -193,13 +177,6 @@ export default async function AdminPage({
                         >
                           Gör
                         </Link>
-                      )}
-                      {!u.approved && !u.is_admin && (
-                        <form action={async () => { "use server"; await approveUser(u.id); }}>
-                          <button type="submit" className="px-3 py-1.5 bg-primary text-background text-xs font-semibold rounded-xl active:scale-95 transition-transform">
-                            Onayla
-                          </button>
-                        </form>
                       )}
                       <form action={async () => { "use server"; await toggleAdmin(u.id); }}>
                         <button type="submit" className="px-3 py-1.5 border border-border text-text-secondary text-xs rounded-xl active:scale-95 transition-transform">
