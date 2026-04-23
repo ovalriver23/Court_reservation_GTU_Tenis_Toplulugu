@@ -6,26 +6,17 @@ import type { Slot } from "@/types";
 
 function timeRange(time: string): string {
   const [h, m] = time.split(":").map(Number);
-  return `${time}-${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function isAdvanceLocked(slotDate: string, slotTime: string, minAdvanceHours: number): boolean {
-  if (minAdvanceHours <= 0) return false;
-  const now = new Date();
-  const cutoff = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000);
-  const slotDateTime = new Date(`${slotDate}T${slotTime}:00`);
-  return slotDateTime < cutoff;
+  return `${h}.${String(m).padStart(2, "0")} - ${h + 1}.${String(m).padStart(2, "0")}`;
 }
 
 interface SlotCardProps {
   slot: Slot;
   currentUserId: string;
-  minAdvanceHours: number;
   onReserve: (slotId: string, date: string, time: string, player2Id?: string | null) => Promise<{ error?: string }>;
   onCancel: (slotId: string, date: string, time: string) => Promise<{ error?: string }>;
 }
 
-export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReserve, onCancel }: SlotCardProps) {
+export default function SlotCard({ slot, currentUserId, onReserve, onCancel }: SlotCardProps) {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [picking, setPicking]     = useState(false);
@@ -36,10 +27,9 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isBooked   = !!slot.player1_id;
-  const isMine     = slot.player1_id === currentUserId || slot.player2_id === currentUserId;
-  const locked     = !isBooked && isAdvanceLocked(slot.date, slot.time, minAdvanceHours);
-  const hasNames   = !!(slot.player1_name || slot.player2_name);
+  const isBooked = !!slot.player1_id;
+  const isMine   = slot.player1_id === currentUserId || slot.player2_id === currentUserId;
+  const hasNames = !!(slot.player1_name || slot.player2_name);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -116,10 +106,6 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
               </svg>
             )}
           </div>
-        ) : locked ? (
-          <button disabled className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary opacity-40 cursor-not-allowed shrink-0">
-            Rezerve
-          </button>
         ) : picking ? (
           <button
             onClick={() => { setPicking(false); setPartner(null); setQuery(""); setError(null); }}
@@ -155,11 +141,7 @@ export default function SlotCard({ slot, currentUserId, minAdvanceHours, onReser
         </div>
       )}
 
-      {locked && (
-        <p className="text-text-secondary text-xs mt-1.5 text-right">
-          {minAdvanceHours} saat içindeki saatlere rezervasyon yapılamaz
-        </p>
-      )}
+
 
       {picking && (
         <div className="mt-3 space-y-2">

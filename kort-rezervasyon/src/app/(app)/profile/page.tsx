@@ -7,7 +7,7 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="px-4 pt-2 pb-8 space-y-4">
+    <div className="px-4 pt-2 pb-8 space-y-4 max-w-4xl mx-auto w-full">
       <h2 className="text-text-primary font-semibold text-lg mb-2">Profil</h2>
 
       {/* Kullanıcı bilgileri */}

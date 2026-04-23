@@ -14,7 +14,7 @@ function formatDate(dateStr: string): string {
 
 function timeRange(time: string): string {
   const [h, m] = time.split(":").map(Number);
-  return `${time}-${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return `${h}.${String(m).padStart(2, "0")} - ${h + 1}.${String(m).padStart(2, "0")}`;
 }
 
 export default async function ReservationsPage() {
@@ -36,7 +36,7 @@ export default async function ReservationsPage() {
   const reservations = (data as Slot[]) ?? [];
 
   return (
-    <div className="px-4 pt-2 pb-8">
+    <div className="px-4 pt-2 pb-8 max-w-4xl mx-auto w-full">
       <h2 className="text-text-primary font-semibold text-lg mb-4">Rezervasyonlarım</h2>
 
       {reservations.length === 0 ? (

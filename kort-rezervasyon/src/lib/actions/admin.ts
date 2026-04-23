@@ -94,12 +94,12 @@ export async function updateSettings(formData: FormData) {
   const slot_end          = formData.get("slot_end") as string;
   const daily_limit       = Math.max(0, parseInt(formData.get("daily_limit") as string) || 0);
   const weekly_limit      = Math.max(0, parseInt(formData.get("weekly_limit") as string) || 0);
-  const min_advance_hours = Math.max(0, parseInt(formData.get("min_advance_hours") as string) || 0);
+  const max_advance_days  = Math.max(1, parseInt(formData.get("max_advance_days") as string) || 3);
 
   const admin = createAdminClient();
   const { error } = await admin
     .from("app_settings")
-    .update({ slot_start, slot_end, daily_limit, weekly_limit, min_advance_hours })
+    .update({ slot_start, slot_end, daily_limit, weekly_limit, max_advance_days })
     .eq("id", 1);
 
   if (error) return { error: `Ayarlar kaydedilemedi: ${error.message}` };
@@ -152,6 +152,31 @@ export async function toggleAdmin(userId: string) {
 
   if (error) return { error: `Admin durumu değiştirilemedi: ${error.message}` };
   revalidatePath("/admin");
+  return {};
+}
+
+export async function adminReserveSlot(date: string, time: string, name: string) {
+  const user = await requireAdmin();
+  if (!user) return { error: "Yetkisiz." };
+
+  if (!name.trim()) return { error: "İsim boş olamaz." };
+  if (!date || !time) return { error: "Tarih ve saat gerekli." };
+
+  const admin = createAdminClient();
+
+  const { data: updated, error } = await admin
+    .from("slots")
+    .update({ player1_id: user.id, player1_name: name.trim() })
+    .eq("date", date)
+    .eq("time", time)
+    .is("player1_id", null)
+    .select("id");
+
+  if (error) return { error: `Rezervasyon yapılamadı: ${error.message}` };
+  if (!updated || updated.length === 0) return { error: "Bu slot dolu veya bulunamadı." };
+
+  revalidatePath("/admin");
+  revalidatePath("/");
   return {};
 }
 

@@ -3,11 +3,11 @@
 const DAYS_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 const MONTHS_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
-function getDates(): Date[] {
+function getDates(maxDays: number): Date[] {
   const dates: Date[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i <= maxDays; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     dates.push(d);
@@ -18,6 +18,7 @@ function getDates(): Date[] {
 interface WeekCalendarProps {
   selected: string; // "YYYY-MM-DD"
   onChange: (date: string) => void;
+  maxAdvanceDays?: number;
 }
 
 function toDateString(d: Date): string {
@@ -27,8 +28,8 @@ function toDateString(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export default function WeekCalendar({ selected, onChange }: WeekCalendarProps) {
-  const dates = getDates();
+export default function WeekCalendar({ selected, onChange, maxAdvanceDays = 14 }: WeekCalendarProps) {
+  const dates = getDates(maxAdvanceDays);
 
   return (
     <div className="overflow-x-auto pb-1 scrollbar-none">

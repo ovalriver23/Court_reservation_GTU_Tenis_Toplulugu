@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { rejectUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
 import SettingsForm from "@/components/SettingsForm";
+import AdminReserveForm from "@/components/AdminReserveForm";
 import type { Slot } from "@/types";
 
 const MONTHS_TR = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
@@ -16,7 +17,7 @@ function formatDate(dateStr: string): string {
 
 function timeRange(time: string): string {
   const [h, m] = time.split(":").map(Number);
-  return `${time}-${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return `${h}.${String(m).padStart(2, "0")} - ${h + 1}.${String(m).padStart(2, "0")}`;
 }
 
 function todayString(): string {
@@ -25,12 +26,13 @@ function todayString(): string {
 }
 
 type User = { id: string; name: string; email: string; approved: boolean; is_admin: boolean; created_at: string };
-type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number; min_advance_hours: number };
+type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number; max_advance_days: number };
 
 const TABS = [
   { key: "overview",     label: "Özet" },
   { key: "users",        label: "Üyeler" },
   { key: "reservations", label: "Rezervasyonlar" },
+  { key: "manuel",       label: "Manuel" },
   { key: "settings",     label: "Ayarlar" },
 ];
 
@@ -49,7 +51,7 @@ export default async function AdminPage({
   let approvedCount = 0, todayCount = 0, totalCount = 0;
   let users: User[] = [];
   let reservations: Slot[] = [];
-  let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, min_advance_hours: 0 };
+  let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, max_advance_days: 3 };
   let filterUserName: string | null = null;
 
   if (tab === "overview") {
@@ -83,6 +85,11 @@ export default async function AdminPage({
     users = users.map(u => ({ ...u, reservationCount: slotCounts[u.id] ?? 0 } as User & { reservationCount: number }));
   }
 
+  if (tab === "reservations" || tab === "settings" || tab === "manuel") {
+    const { data } = await admin.from("app_settings").select("*").eq("id", 1).single();
+    if (data) settings = data as AppSettings;
+  }
+
   if (tab === "reservations") {
     let query = supabase
       .from("slots")
@@ -108,13 +115,8 @@ export default async function AdminPage({
     }
   }
 
-  if (tab === "settings") {
-    const { data } = await admin.from("app_settings").select("*").eq("id", 1).single();
-    if (data) settings = data as AppSettings;
-  }
-
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-w-4xl mx-auto w-full">
       {/* Tab bar */}
       <div className="flex gap-1.5 px-4 pb-5 overflow-x-auto scrollbar-none">
         {TABS.map(t => (
@@ -193,6 +195,11 @@ export default async function AdminPage({
               </div>
             ))}
           </div>
+        )}
+
+        {/* MANUEL */}
+        {tab === "manuel" && (
+          <AdminReserveForm slotStart={settings.slot_start} slotEnd={settings.slot_end} />
         )}
 
         {/* RESERVATIONS */}

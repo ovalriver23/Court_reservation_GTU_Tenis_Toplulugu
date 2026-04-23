@@ -37,7 +37,7 @@ function filterVisibleSlots(slots: Slot[], date: string, settings: AppSettings |
   return filtered;
 }
 
-type AppSettings = { slot_start: string; slot_end: string; min_advance_hours: number };
+type AppSettings = { slot_start: string; slot_end: string; max_advance_days: number };
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
@@ -52,7 +52,7 @@ export default function HomePage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
-    supabase.from("app_settings").select("slot_start, slot_end, min_advance_hours").eq("id", 1).single()
+    supabase.from("app_settings").select("slot_start, slot_end, max_advance_days").eq("id", 1).single()
       .then(({ data }) => { if (data) setSettings(data as AppSettings); });
   }, []);
 
@@ -104,13 +104,11 @@ export default function HomePage() {
     [slots, selectedDate, settings]
   );
 
-  const minAdvanceHours = settings?.min_advance_hours ?? 0;
-
   return (
     <div className="flex flex-col h-full">
       <div className="pt-4 pb-3">
         <div className="px-4 max-w-4xl mx-auto">
-          <WeekCalendar selected={selectedDate} onChange={setSelectedDate} />
+          <WeekCalendar selected={selectedDate} onChange={setSelectedDate} maxAdvanceDays={settings?.max_advance_days ?? 3} />
         </div>
       </div>
 
@@ -131,7 +129,6 @@ export default function HomePage() {
                   key={slot.id}
                   slot={slot}
                   currentUserId={userId}
-                  minAdvanceHours={minAdvanceHours}
                   onReserve={handleReserve}
                   onCancel={handleCancel}
                 />
