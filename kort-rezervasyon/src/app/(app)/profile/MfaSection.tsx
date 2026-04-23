@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type EnrollStep = "idle" | "qr" | "verifying";
 
 export default function MfaSection() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [enrolled, setEnrolled]   = useState(false);
   const [factorId, setFactorId]   = useState<string | null>(null);
@@ -25,7 +25,7 @@ export default function MfaSection() {
       if (verified) { setEnrolled(true); setFactorId(verified.id); }
       setCheckDone(true);
     });
-  }, []);
+  }, [supabase]);
 
   async function handleEnroll() {
     setError(null);

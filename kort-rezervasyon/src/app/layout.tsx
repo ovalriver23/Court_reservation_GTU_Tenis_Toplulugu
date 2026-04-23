@@ -28,6 +28,8 @@ export default function RootLayout({
       <body className={`${lexend.variable} font-lexend antialiased bg-background text-text-primary`}>
         <ThemeProvider>
           {children}
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>

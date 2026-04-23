@@ -54,7 +54,7 @@ export default function HomePage() {
     });
     supabase.from("app_settings").select("slot_start, slot_end, max_advance_days").eq("id", 1).single()
       .then(({ data }) => { if (data) setSettings(data as AppSettings); });
-  }, []);
+  }, [supabase]);
 
   const fetchSlots = useCallback(async (date: string) => {
     setLoading(true);
@@ -81,7 +81,7 @@ export default function HomePage() {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [selectedDate, fetchSlots]);
+  }, [selectedDate, fetchSlots, supabase]);
 
   const handleReserve = useCallback(async (
     slotId: string, date: string, time: string, player2Id?: string | null
