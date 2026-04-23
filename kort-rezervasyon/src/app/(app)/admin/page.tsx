@@ -47,7 +47,6 @@ export default async function AdminPage({
 
 
   let approvedCount = 0, todayCount = 0, totalCount = 0;
-  const pendingCount = 0;
   let users: User[] = [];
   let reservations: Slot[] = [];
   let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, min_advance_hours: 0 };
