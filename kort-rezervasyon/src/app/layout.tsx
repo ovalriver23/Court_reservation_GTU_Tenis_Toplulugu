@@ -12,6 +12,7 @@ const lexend = Lexend({
 export const metadata: Metadata = {
   title: "GTU Tenis — Kort Rezervasyon",
   description: "GTU Tenis Topluluğu kort rezervasyon sistemi",
+  icons: { icon: "/favicon.png" },
 };
 
 export default function RootLayout({
