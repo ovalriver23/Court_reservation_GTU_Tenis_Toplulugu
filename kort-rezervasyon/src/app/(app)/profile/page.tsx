@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getUser, getProfile } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import PasswordChangeForm from "./PasswordChangeForm";
+import NameChangeForm from "./NameChangeForm";
 
 function getISOWeekBounds() {
   const today = new Date();
@@ -23,8 +24,14 @@ export default async function ProfilePage() {
   const { start, end } = getISOWeekBounds();
   const supabaseClient = await createClient();
 
-  const [profile, weekSlots, settingsRow] = await Promise.all([
+  const [profile, profileExtra, weekSlots, settingsRow] = await Promise.all([
     getProfile(),
+    supabaseClient
+      .from("profiles")
+      .select("name_changed_at")
+      .eq("id", user.id)
+      .single<{ name_changed_at: string | null }>()
+      .then(({ data }) => data),
     supabaseClient
       .from("slots")
       .select("time")
@@ -85,6 +92,12 @@ export default async function ProfilePage() {
           </span>
         </div>
       </div>
+
+      {/* İsim değiştir */}
+      <NameChangeForm
+        currentName={profile?.name ?? ""}
+        nameChangedAt={profileExtra?.name_changed_at ?? null}
+      />
 
       {/* Şifre değiştir */}
       <PasswordChangeForm />

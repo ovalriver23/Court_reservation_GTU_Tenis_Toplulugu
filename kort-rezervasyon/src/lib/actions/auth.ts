@@ -128,6 +128,40 @@ export async function resetPassword(newPassword: string) {
   return { success: true };
 }
 
+export async function updateName(newName: string) {
+  const trimmed = newName.trim();
+  if (!trimmed) return { error: "İsim boş olamaz." };
+  if (trimmed.length < 2) return { error: "İsim en az 2 karakter olmalı." };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Oturum bulunamadı." };
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("name_changed_at")
+    .eq("id", user.id)
+    .single<{ name_changed_at: string | null }>();
+
+  if (profile?.name_changed_at) {
+    const lastChange = new Date(profile.name_changed_at);
+    const daysSince = (Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSince < 30) {
+      const daysLeft = Math.ceil(30 - daysSince);
+      return { error: `İsmini ${daysLeft} gün sonra tekrar değiştirebilirsin.` };
+    }
+  }
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ name: trimmed, name_changed_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: "İsim güncellenemedi. Lütfen tekrar dene." };
+  return {};
+}
+
 export async function changePassword(currentPassword: string, newPassword: string) {
   const supabase = await createClient();
 
