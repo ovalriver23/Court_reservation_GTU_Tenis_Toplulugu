@@ -54,6 +54,8 @@ export async function reserveSlot(
     if (result.error === "weekly_limit_exceeded") return { error: "Haftalık rezervasyon limitine ulaştınız." };
     if (result.error === "partner_daily_limit_exceeded") return { error: "Seçtiğin kişinin günlük rezervasyon hakkı dolmuş." };
     if (result.error === "partner_weekly_limit_exceeded") return { error: "Seçtiğin kişinin haftalık rezervasyon hakkı dolmuş." };
+    if (result.error === "prime_time_limit_exceeded") return { error: "Bu haftaki prime time hakkınızı kullandınız (16:00–20:00)." };
+    if (result.error === "partner_prime_time_limit_exceeded") return { error: "Seçtiğin kişinin bu haftaki prime time hakkı dolmuş." };
     return { error: result.error ?? "Rezervasyon alınamadı." };
   }
 

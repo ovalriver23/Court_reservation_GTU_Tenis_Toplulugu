@@ -12,11 +12,14 @@ function timeRange(time: string): string {
 interface SlotCardProps {
   slot: Slot;
   currentUserId: string;
+  isPastDate: boolean;
+  primeTimeStart?: string;
+  primeTimeEnd?: string;
   onReserve: (slotId: string, date: string, time: string, player2Id?: string | null) => Promise<{ error?: string }>;
   onCancel: (slotId: string, date: string, time: string) => Promise<{ error?: string }>;
 }
 
-export default function SlotCard({ slot, currentUserId, onReserve, onCancel }: SlotCardProps) {
+export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeStart = "16:00", primeTimeEnd = "20:00", onReserve, onCancel }: SlotCardProps) {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [picking, setPicking]     = useState(false);
@@ -30,6 +33,7 @@ export default function SlotCard({ slot, currentUserId, onReserve, onCancel }: S
   const isBooked = !!slot.player1_id;
   const isMine   = slot.player1_id === currentUserId || slot.player2_id === currentUserId;
   const hasNames = !!(slot.player1_name || slot.player2_name);
+  const isPrimeTime = slot.time >= primeTimeStart && slot.time < primeTimeEnd;
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -80,7 +84,14 @@ export default function SlotCard({ slot, currentUserId, onReserve, onCancel }: S
         onClick={() => { if (isBooked && hasNames && !picking) setExpanded(e => !e); }}
         style={{ cursor: isBooked && hasNames && !picking ? "pointer" : "default" }}
       >
-        <span className="text-text-primary font-semibold text-base shrink-0">{timeRange(slot.time)}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-text-primary font-semibold text-base">{timeRange(slot.time)}</span>
+          {isPrimeTime && !isBooked && !isPastDate && (
+            <span className="text-[10px] font-semibold text-primary/80 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5">
+              Prime
+            </span>
+          )}
+        </div>
 
         {isMine ? (
           <div className="flex items-center gap-2 min-w-0">
@@ -106,6 +117,8 @@ export default function SlotCard({ slot, currentUserId, onReserve, onCancel }: S
               </svg>
             )}
           </div>
+        ) : isPastDate ? (
+          <span className="text-xs text-text-secondary">Geçmiş</span>
         ) : picking ? (
           <button
             onClick={() => { setPicking(false); setPartner(null); setQuery(""); setError(null); }}
@@ -140,8 +153,6 @@ export default function SlotCard({ slot, currentUserId, onReserve, onCancel }: S
           )}
         </div>
       )}
-
-
 
       {picking && (
         <div className="mt-3 space-y-2">

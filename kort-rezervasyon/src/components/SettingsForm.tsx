@@ -12,7 +12,8 @@ type AppSettings = {
   slot_end: string;
   daily_limit: number;
   weekly_limit: number;
-  max_advance_days: number;
+  prime_time_start: string;
+  prime_time_end: string;
 };
 
 export default function SettingsForm({ settings }: { settings: AppSettings }) {
@@ -95,22 +96,33 @@ export default function SettingsForm({ settings }: { settings: AppSettings }) {
           </div>
         </div>
 
-        {/* Advance booking */}
+        {/* Prime time hours */}
         <div className="bg-surface border border-border rounded-2xl px-4 py-5">
-          <p className="text-text-primary font-semibold text-sm mb-1">Rezervasyon Penceresi</p>
+          <p className="text-text-primary font-semibold text-sm mb-1">Prime Time Saatleri</p>
           <p className="text-text-secondary text-xs mb-4">
-            Maksimum kaç gün ilerisi için rezervasyon yapılabilsin.
+            Bu saatler arasında kullanıcı haftada 1 rezervasyon yapabilir.
           </p>
-          <div className="flex-1">
-            <label className="block text-text-secondary text-xs mb-1.5">Maks. ilerisi (gün)</label>
-            <input
-              type="number"
-              name="max_advance_days"
-              defaultValue={settings.max_advance_days}
-              min={1}
-              max={14}
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
-            />
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-text-secondary text-xs mb-1.5">Başlangıç</label>
+              <select
+                name="prime_time_start"
+                defaultValue={settings.prime_time_start}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+              >
+                {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-text-secondary text-xs mb-1.5">Bitiş</label>
+              <select
+                name="prime_time_end"
+                defaultValue={settings.prime_time_end}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+              >
+                {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 

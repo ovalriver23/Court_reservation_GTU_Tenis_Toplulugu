@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme";
@@ -15,8 +15,13 @@ const BASE_NAV_ITEMS = [
 export default function HamburgerMenu({ isAdmin = false }: { isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [loggingOut, startLogout] = useTransition();
   const pathname = usePathname();
   const { nextTheme } = useTheme();
+
+  function handleLogout() {
+    startLogout(async () => { await logout(); });
+  }
 
   const navItems = isAdmin
     ? [...BASE_NAV_ITEMS, { href: "/admin", label: "Admin Panel", icon: ShieldIcon }]
@@ -114,15 +119,17 @@ export default function HamburgerMenu({ isAdmin = false }: { isAdmin?: boolean }
 
         {/* Çıkış */}
         <div className="px-3 pb-10">
-          <form action={logout}>
-            <button
-              type="submit"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary transition-all active:scale-[0.98]"
-            >
-              <LogoutIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">Çıkış Yap</span>
-            </button>
-          </form>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            {loggingOut
+              ? <div className="w-5 h-5 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+              : <LogoutIcon className="w-5 h-5" />
+            }
+            <span className="text-sm font-medium">{loggingOut ? "Çıkılıyor..." : "Çıkış Yap"}</span>
+          </button>
         </div>
       </div>
     </>

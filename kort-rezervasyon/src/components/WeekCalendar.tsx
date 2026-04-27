@@ -3,22 +3,24 @@
 const DAYS_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 const MONTHS_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
-function getDates(maxDays: number): Date[] {
-  const dates: Date[] = [];
+function getISOWeekDates(): Date[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  for (let i = 0; i <= maxDays; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push(d);
-  }
-  return dates;
+  // getDay() → 0=Paz, 1=Pzt, ..., 6=Cmt; ISO hafta Pazartesi başlar
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diffToMonday);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
 }
 
 interface WeekCalendarProps {
   selected: string; // "YYYY-MM-DD"
   onChange: (date: string) => void;
-  maxAdvanceDays?: number;
 }
 
 function toDateString(d: Date): string {
@@ -28,8 +30,8 @@ function toDateString(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export default function WeekCalendar({ selected, onChange, maxAdvanceDays = 14 }: WeekCalendarProps) {
-  const dates = getDates(maxAdvanceDays);
+export default function WeekCalendar({ selected, onChange }: WeekCalendarProps) {
+  const dates = getISOWeekDates();
 
   return (
     <div className="overflow-x-auto pb-1 scrollbar-none">

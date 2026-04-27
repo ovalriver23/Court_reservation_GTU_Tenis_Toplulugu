@@ -20,7 +20,15 @@ export type Slot = {
 
 export type ReserveSlotResult =
   | { success: true }
-  | { success: false; error: "slot_full" };
+  | { success: false; error:
+      | "slot_full"
+      | "daily_limit_exceeded"
+      | "weekly_limit_exceeded"
+      | "prime_time_limit_exceeded"
+      | "partner_daily_limit_exceeded"
+      | "partner_weekly_limit_exceeded"
+      | "partner_prime_time_limit_exceeded"
+    };
 
 // Minimal Database type used by Supabase clients
 export type Database = {

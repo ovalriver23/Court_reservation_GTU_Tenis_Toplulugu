@@ -69,15 +69,17 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Admin kontrolü
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single<{ is_admin: boolean }>();
+  // Admin kontrolü — sadece /admin rotasına erişimde profile sorgusu yap
+  if (pathname.startsWith("/admin")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single<{ is_admin: boolean }>();
 
-  if (pathname.startsWith("/admin") && !profile?.is_admin) {
-    return NextResponse.redirect(new URL("/", request.url));
+    if (!profile?.is_admin) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
   return supabaseResponse;

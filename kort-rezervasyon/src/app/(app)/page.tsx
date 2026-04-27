@@ -37,7 +37,7 @@ function filterVisibleSlots(slots: Slot[], date: string, settings: AppSettings |
   return filtered;
 }
 
-type AppSettings = { slot_start: string; slot_end: string; max_advance_days: number };
+type AppSettings = { slot_start: string; slot_end: string; prime_time_start: string; prime_time_end: string };
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
@@ -52,7 +52,7 @@ export default function HomePage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
-    supabase.from("app_settings").select("slot_start, slot_end, max_advance_days").eq("id", 1).single()
+    supabase.from("app_settings").select("slot_start, slot_end, prime_time_start, prime_time_end").eq("id", 1).single()
       .then(({ data }) => { if (data) setSettings(data as AppSettings); });
   }, [supabase]);
 
@@ -104,11 +104,14 @@ export default function HomePage() {
     [slots, selectedDate, settings]
   );
 
+  const todayStr = todayString();
+  const isPastDate = selectedDate < todayStr;
+
   return (
     <div className="flex flex-col h-full">
       <div className="pt-4 pb-3">
         <div className="px-4 max-w-4xl mx-auto">
-          <WeekCalendar selected={selectedDate} onChange={setSelectedDate} maxAdvanceDays={settings?.max_advance_days ?? 3} />
+          <WeekCalendar selected={selectedDate} onChange={setSelectedDate} />
         </div>
       </div>
 
@@ -129,6 +132,9 @@ export default function HomePage() {
                   key={slot.id}
                   slot={slot}
                   currentUserId={userId}
+                  isPastDate={isPastDate}
+                  primeTimeStart={settings?.prime_time_start ?? "16:00"}
+                  primeTimeEnd={settings?.prime_time_end ?? "20:00"}
                   onReserve={handleReserve}
                   onCancel={handleCancel}
                 />
