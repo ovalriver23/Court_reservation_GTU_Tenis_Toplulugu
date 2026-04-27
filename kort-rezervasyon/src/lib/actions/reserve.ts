@@ -88,10 +88,10 @@ export async function cancelSlot(
     return {};
   }
 
-  // Player2 olarak iptal et — sadece kendini çıkarır
+  // Player2 olarak iptal et — ikisi de temizlenir
   const { data: updated2, error } = await admin
     .from("slots")
-    .update({ player2_id: null, player2_name: null })
+    .update({ player1_id: null, player1_name: null, player2_id: null, player2_name: null })
     .eq("date", date)
     .eq("time", time)
     .eq("player2_id", user.id)
