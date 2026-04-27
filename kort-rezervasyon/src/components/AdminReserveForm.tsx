@@ -8,12 +8,15 @@ function todayString() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function generateTimes(slotStart: string, slotEnd: string): string[] {
-  const times: string[] = [];
+function generateTimes(slotStart: string, slotEnd: string): { value: string; label: string }[] {
+  const times: { value: string; label: string }[] = [];
   const startH = parseInt(slotStart.split(":")[0]);
   const endH   = parseInt(slotEnd.split(":")[0]);
   for (let h = startH; h <= endH; h++) {
-    times.push(`${String(h).padStart(2, "0")}:00`);
+    times.push({
+      value: `${String(h).padStart(2, "0")}:00`,
+      label: `${h}.00 - ${h + 1}.00`,
+    });
   }
   return times;
 }
@@ -83,7 +86,7 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
                   onChange={e => setStartTime(e.target.value)}
                   className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
                 >
-                  {times.map(t => <option key={t} value={t}>{t}</option>)}
+                  {times.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
                 <span className="text-text-secondary text-xs shrink-0">—</span>
                 <select
@@ -91,7 +94,7 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
                   onChange={e => setEndTime(e.target.value)}
                   className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
                 >
-                  {times.map(t => <option key={t} value={t}>{t}</option>)}
+                  {times.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
             </div>

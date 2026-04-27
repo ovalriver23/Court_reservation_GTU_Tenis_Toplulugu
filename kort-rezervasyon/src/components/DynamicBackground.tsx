@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTheme } from "@/lib/theme";
 
 const themeBackgrounds: Record<string, string> = {
@@ -13,16 +14,15 @@ export default function DynamicBackground() {
   const bgImage = themeBackgrounds[theme] ?? themeBackgrounds.theme1;
 
   return (
-    <div
-      className="fixed inset-0 pointer-events-none"
-      style={{
-        zIndex: 0,
-        backgroundImage: `url('${bgImage}')`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundColor: "#A3472E",
-      }}
-      aria-hidden="true"
-    />
+    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }} aria-hidden="true">
+      <Image
+        src={bgImage}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        style={{ objectFit: "cover", objectPosition: "center" }}
+      />
+    </div>
   );
 }
