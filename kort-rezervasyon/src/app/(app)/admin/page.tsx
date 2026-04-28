@@ -40,10 +40,12 @@ const TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: { tab?: string; userId?: string };
+  searchParams: { tab?: string; userId?: string; q?: string; view?: string };
 }) {
   const tab    = searchParams?.tab    ?? "overview";
   const userId = searchParams?.userId ?? null;
+  const query  = searchParams?.q?.trim() ?? "";
+  const reservationView = searchParams?.view === "past" ? "past" : "active";
   const supabase = await createClient();
   const admin    = createAdminClient();
   const today    = todayString();
@@ -54,6 +56,12 @@ export default async function AdminPage({
   let reservations: Slot[] = [];
   let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, prime_time_start: "16:00", prime_time_end: "20:00" };
   let filterUserName: string | null = null;
+  const hasUserSearch = tab === "users" && query.length > 0;
+
+  function isPastReservation(slot: Slot): boolean {
+    const slotDateTime = new Date(`${slot.date}T${slot.time}:00`);
+    return slotDateTime < new Date();
+  }
 
   if (tab === "overview") {
     const [r1, r2, r3] = await Promise.all([
@@ -84,6 +92,14 @@ export default async function AdminPage({
       slotCounts[pid] = (slotCounts[pid] ?? 0) + 1;
     }
     users = users.map(u => ({ ...u, reservationCount: slotCounts[u.id] ?? 0 } as User & { reservationCount: number }));
+
+    if (hasUserSearch) {
+      const search = query.toLocaleLowerCase("tr-TR");
+      users = users.filter(u =>
+        u.name.toLocaleLowerCase("tr-TR").includes(search) ||
+        u.email.toLocaleLowerCase("tr-TR").includes(search)
+      );
+    }
   }
 
   if (tab === "reservations" || tab === "settings" || tab === "manuel") {
@@ -92,17 +108,21 @@ export default async function AdminPage({
   }
 
   if (tab === "reservations") {
-    let query = supabase
+    let reservationQuery = supabase
       .from("slots")
       .select("*")
       .not("player1_id", "is", null)
       .order("date")
       .order("time");
 
-    if (userId) query = query.eq("player1_id", userId);
+    if (userId) reservationQuery = reservationQuery.eq("player1_id", userId);
 
-    const { data } = await query;
+    const { data } = await reservationQuery;
     reservations = (data as Slot[]) ?? [];
+
+    reservations = reservations.filter(slot =>
+      reservationView === "past" ? isPastReservation(slot) : !isPastReservation(slot)
+    );
 
     if (userId && reservations.length > 0) {
       filterUserName = reservations[0].player1_name ?? null;
@@ -149,8 +169,35 @@ export default async function AdminPage({
         {/* USERS */}
         {tab === "users" && (
           <div className="flex flex-col gap-3">
+            <form action="/admin" method="get" className="flex flex-col gap-2 bg-surface border border-border rounded-2xl p-3">
+              <input type="hidden" name="tab" value="users" />
+              <label className="text-xs text-text-secondary font-medium">Üye ara</label>
+              <div className="flex gap-2">
+                <input
+                  type="search"
+                  name="q"
+                  defaultValue={query}
+                  placeholder="İsim veya e-posta"
+                  className="flex-1 rounded-xl border border-border bg-background/40 px-4 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-secondary/70 focus:border-primary"
+                />
+                <button type="submit" className="px-4 py-2.5 rounded-xl bg-primary text-background text-sm font-medium active:scale-95 transition-transform">
+                  Ara
+                </button>
+                {query && (
+                  <Link
+                    href="/admin?tab=users"
+                    className="px-4 py-2.5 rounded-xl border border-border text-text-secondary text-sm font-medium active:scale-95 transition-transform"
+                  >
+                    Temizle
+                  </Link>
+                )}
+              </div>
+            </form>
+
             {users.length === 0 ? (
-              <p className="text-text-secondary text-sm text-center pt-4">Kayıtlı üye yok.</p>
+              <p className="text-text-secondary text-sm text-center pt-4">
+                {hasUserSearch ? "Aramanızla eşleşen üye bulunamadı." : "Kayıtlı üye yok."}
+              </p>
             ) : (users as (User & { reservationCount: number })[]).map(u => (
               <div key={u.id} className="bg-surface border border-border rounded-2xl px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
@@ -207,6 +254,29 @@ export default async function AdminPage({
         {/* RESERVATIONS */}
         {tab === "reservations" && (
           <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2 bg-surface border border-border rounded-2xl p-2">
+              <Link
+                href={userId ? `/admin?tab=reservations&userId=${userId}` : "/admin?tab=reservations"}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium text-center transition-all active:scale-95 ${
+                  reservationView === "active"
+                    ? "bg-primary text-background"
+                    : "text-text-secondary"
+                }`}
+              >
+                Aktif
+              </Link>
+              <Link
+                href={userId ? `/admin?tab=reservations&userId=${userId}&view=past` : "/admin?tab=reservations&view=past"}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium text-center transition-all active:scale-95 ${
+                  reservationView === "past"
+                    ? "bg-primary text-background"
+                    : "text-text-secondary"
+                }`}
+              >
+                Geçmiş
+              </Link>
+            </div>
+
             {userId && (
               <div className="flex items-center justify-between bg-surface border border-primary/30 rounded-xl px-4 py-2.5">
                 <p className="text-text-secondary text-xs">
@@ -219,7 +289,9 @@ export default async function AdminPage({
             )}
 
             {reservations.length === 0 ? (
-              <p className="text-text-secondary text-sm text-center pt-4">Aktif rezervasyon yok.</p>
+              <p className="text-text-secondary text-sm text-center pt-4">
+                {reservationView === "past" ? "Geçmiş rezervasyon yok." : "Aktif rezervasyon yok."}
+              </p>
             ) : reservations.map(slot => (
               <div key={slot.id} className="bg-surface border border-primary/30 rounded-2xl px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
