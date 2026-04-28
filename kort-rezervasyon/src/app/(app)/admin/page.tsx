@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { rejectUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
 import SettingsForm from "@/components/SettingsForm";
 import AdminReserveForm from "@/components/AdminReserveForm";
+import WarnUserModal from "@/components/WarnUserModal";
 import type { Slot } from "@/types";
 
 const MONTHS_TR = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
@@ -179,6 +180,7 @@ export default async function AdminPage({
                           Gör
                         </Link>
                       )}
+                      <WarnUserModal userId={u.id} userName={u.name} userEmail={u.email} />
                       <form action={async () => { "use server"; await toggleAdmin(u.id); }}>
                         <button type="submit" className="px-3 py-1.5 border border-border text-text-secondary text-xs rounded-xl active:scale-95 transition-transform">
                           {u.is_admin ? "Admin Kaldır" : "Admin Yap"}

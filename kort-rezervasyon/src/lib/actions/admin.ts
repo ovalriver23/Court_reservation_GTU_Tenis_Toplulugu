@@ -232,3 +232,59 @@ export async function adminCancelSlot(date: string, time: string) {
   revalidatePath("/admin");
   return {};
 }
+
+export async function sendWarningEmail(
+  userId: string,
+  subject: string,
+  message: string
+): Promise<{ success?: boolean; error?: string }> {
+  const user = await requireAdmin();
+  if (!user) return { error: "Yetkisiz." };
+
+  if (!subject.trim()) return { error: "Konu boş olamaz." };
+  if (!message.trim()) return { error: "Mesaj boş olamaz." };
+
+  const admin = createAdminClient();
+  const { data: profile, error: dbError } = await admin
+    .from("profiles")
+    .select("email, name")
+    .eq("id", userId)
+    .single<{ email: string; name: string }>();
+
+  if (dbError || !profile?.email) return { error: "Kullanıcı bulunamadı." };
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "GTU Tenis <noreply@gtutennis.com.tr>",
+      to: [profile.email],
+      subject: subject.trim(),
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #1a1a1a; border-radius: 16px; overflow: hidden;">
+          <div style="background: #A3472E; padding: 24px 32px;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 18px;">GTU Tenis — Yönetici Bildirimi</h2>
+            <p style="color: #ffffff99; margin: 4px 0 0; font-size: 13px;">${new Date().toLocaleString("tr-TR")}</p>
+          </div>
+          <div style="padding: 28px 32px;">
+            <p style="color: #aaaaaa; font-size: 13px; margin: 0 0 16px;">Merhaba, <span style="color: #ffffff;">${profile.name}</span></p>
+            <p style="color: #ffffff; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${message.trim()}</p>
+          </div>
+          <div style="border-top: 1px solid #333; padding: 14px 32px;">
+            <p style="color: #444444; font-size: 11px; margin: 0;">GTU Tenis Topluluğu · gtutennis.com.tr</p>
+          </div>
+        </div>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    console.error("[sendWarningEmail] Resend error:", res.status, body);
+    return { error: "E-posta gönderilemedi. Lütfen tekrar deneyin." };
+  }
+  return { success: true };
+}
