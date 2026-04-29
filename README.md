@@ -92,6 +92,3 @@ kort-rezervasyon/
 - Admin panelinde kullanıcı ve rezervasyon yönetimi
 - Saat aralığı ve limit ayarları
 
-## Not
-
-Bu repo içinde ana uygulama `kort-rezervasyon/` klasöründe yer alıyor. GitHub'a push ederken repo köküne koyduğun bu README, projeyi ilk bakışta anlatmak için hazırlandı.
