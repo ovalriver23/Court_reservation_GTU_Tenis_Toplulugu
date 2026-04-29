@@ -15,26 +15,20 @@ function todayString(): string {
   return `${y}-${m}-${day}`;
 }
 
-function filterVisibleSlots(slots: Slot[], date: string, settings: AppSettings | null): Slot[] {
-  let filtered = slots;
+function filterVisibleSlots(slots: Slot[], settings: AppSettings | null): Slot[] {
+  if (!settings) return slots;
+  return slots.filter(s => s.time >= settings.slot_start && s.time <= settings.slot_end);
+}
 
-  if (settings) {
-    filtered = filtered.filter(s => s.time >= settings.slot_start && s.time <= settings.slot_end);
-  }
-
-  // Sadece bugünün geçmiş saatlerini gizle; advance-lock slotları SlotCard'da göster
+function isSlotInPast(date: string, time: string): boolean {
   const todayStr = todayString();
-  if (date === todayStr) {
-    const now = new Date();
-    const h = now.getHours();
-    const m = now.getMinutes();
-    filtered = filtered.filter((s) => {
-      const [sh, sm] = s.time.split(":").map(Number);
-      return sh > h || (sh === h && sm >= m);
-    });
-  }
-
-  return filtered;
+  if (date < todayStr) return true;
+  if (date > todayStr) return false;
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const [sh, sm] = time.split(":").map(Number);
+  return !(sh > h || (sh === h && sm >= m));
 }
 
 type AppSettings = { slot_start: string; slot_end: string; prime_time_start: string; prime_time_end: string };
@@ -100,12 +94,9 @@ export default function HomePage() {
   }, [selectedDate, fetchSlots]);
 
   const visibleSlots = useMemo(
-    () => filterVisibleSlots(slots, selectedDate, settings),
-    [slots, selectedDate, settings]
+    () => filterVisibleSlots(slots, settings),
+    [slots, settings]
   );
-
-  const todayStr = todayString();
-  const isPastDate = selectedDate < todayStr;
 
   return (
     <div className="flex flex-col h-full">
@@ -132,7 +123,7 @@ export default function HomePage() {
                   key={slot.id}
                   slot={slot}
                   currentUserId={userId}
-                  isPastDate={isPastDate}
+                  isPastDate={isSlotInPast(selectedDate, slot.time)}
                   primeTimeStart={settings?.prime_time_start ?? "16:00"}
                   primeTimeEnd={settings?.prime_time_end ?? "20:00"}
                   onReserve={handleReserve}

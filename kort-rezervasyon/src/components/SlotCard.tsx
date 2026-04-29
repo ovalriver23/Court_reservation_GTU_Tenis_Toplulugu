@@ -77,6 +77,24 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
 
   const displayNames = [slot.player1_name, slot.player2_name].filter(Boolean).join(" & ");
 
+  if (isPastDate) {
+    return (
+      <div className="bg-surface border border-border rounded-2xl px-4 py-3 opacity-35">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-text-primary font-semibold text-base">{timeRange(slot.time)}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            {isBooked && (
+              <span className="text-xs text-text-secondary truncate max-w-[140px] text-right">
+                {displayNames || "Dolu"}
+              </span>
+            )}
+            <span className="text-xs text-text-secondary shrink-0">Geçmiş</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`bg-surface border rounded-2xl px-4 py-3 transition-all ${isMine ? "border-primary/50" : "border-border"}`}>
       <div
@@ -86,7 +104,7 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
       >
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-text-primary font-semibold text-base">{timeRange(slot.time)}</span>
-          {isPrimeTime && !isBooked && !isPastDate && (
+          {isPrimeTime && !isBooked && (
             <span className="text-[10px] font-semibold text-primary/80 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5">
               Prime
             </span>
@@ -117,8 +135,6 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
               </svg>
             )}
           </div>
-        ) : isPastDate ? (
-          <span className="text-xs text-text-secondary">Geçmiş</span>
         ) : picking ? (
           <button
             onClick={() => { setPicking(false); setPartner(null); setQuery(""); setError(null); }}

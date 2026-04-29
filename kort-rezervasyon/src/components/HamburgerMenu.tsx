@@ -118,7 +118,7 @@ export default function HamburgerMenu({ isAdmin = false }: { isAdmin?: boolean }
         </nav>
 
         {/* Çıkış */}
-        <div className="px-3 pb-10">
+        <div className="px-3 pb-8">
           <button
             onClick={handleLogout}
             disabled={loggingOut}
@@ -130,6 +130,9 @@ export default function HamburgerMenu({ isAdmin = false }: { isAdmin?: boolean }
             }
             <span className="text-sm font-medium">{loggingOut ? "Çıkılıyor..." : "Çıkış Yap"}</span>
           </button>
+          <p className="text-center text-[10px] tracking-widest mt-4 text-primary/80">
+            made by Fifty2
+          </p>
         </div>
       </div>
     </>
