@@ -14,7 +14,7 @@ const lexend = Lexend({
 export const metadata: Metadata = {
   title: "GTU Tenis — Kort Rezervasyon",
   description: "GTU Tenis Topluluğu kort rezervasyon sistemi",
-  icons: { icon: "/favicon.png" },
+  icons: { icon: "/photos/favicon.png" },
   verification: { google: "WC_Ujp2AemlDWkybGKC_qlPvU3kv8aNEMd-vgrKPd88" },
 };
 

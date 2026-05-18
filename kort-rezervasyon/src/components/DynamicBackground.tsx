@@ -4,9 +4,9 @@ import Image from "next/image";
 import { useTheme } from "@/lib/theme";
 
 const themeBackgrounds: Record<string, string> = {
-  theme1: "/court-bg.png",
-  theme2: "/theme2-bg.png",
-  theme3: "/theme3-app-bg.png",
+  theme1: "/photos/court-bg.png",
+  theme2: "/photos/theme2-bg.png",
+  theme3: "/photos/theme3-app-bg.png",
 };
 
 export default function DynamicBackground() {

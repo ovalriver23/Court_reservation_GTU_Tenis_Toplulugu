@@ -4,9 +4,9 @@ import Image from "next/image";
 import { useTheme } from "@/lib/theme";
 
 const themeBackgrounds: Record<string, string> = {
-  theme1: "/court.jpeg",
-  theme2: "/theme2-bg.png",
-  theme3: "/theme3-auth-bg.png",
+  theme1: "/photos/court.jpeg",
+  theme2: "/photos/theme2-bg.png",
+  theme3: "/photos/theme3-auth-bg.png",
 };
 
 export default function CourtLines() {

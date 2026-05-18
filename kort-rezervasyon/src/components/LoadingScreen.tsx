@@ -17,7 +17,7 @@ export default function LoadingScreen() {
       }}
     >
       <video
-        src="/tennis-ball.webm"
+        src="/photos/tennis-ball.webm"
         autoPlay
         loop
         muted
