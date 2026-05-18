@@ -14,6 +14,7 @@ type AppSettings = {
   weekly_limit: number;
   prime_time_start: string;
   prime_time_end: string;
+  min_cancel_hours: number;
 };
 
 export default function SettingsForm({ settings }: { settings: AppSettings }) {
@@ -123,6 +124,25 @@ export default function SettingsForm({ settings }: { settings: AppSettings }) {
                 {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* Cancel lock */}
+        <div className="bg-surface border border-border rounded-2xl px-4 py-5">
+          <p className="text-text-primary font-semibold text-sm mb-1">İptal Kilidi</p>
+          <p className="text-text-secondary text-xs mb-4">
+            0 = sınırsız. N saat ayarlanırsa randevu saatine N saat kala iptal yapılamaz.
+          </p>
+          <div className="flex-1">
+            <label className="block text-text-secondary text-xs mb-1.5">Minimum İptal Süresi (saat)</label>
+            <input
+              type="number"
+              name="min_cancel_hours"
+              defaultValue={settings.min_cancel_hours}
+              min={0}
+              max={24}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+            />
           </div>
         </div>
 

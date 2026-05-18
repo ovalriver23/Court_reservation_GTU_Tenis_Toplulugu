@@ -27,7 +27,7 @@ function todayString(): string {
 }
 
 type User = { id: string; name: string; email: string; approved: boolean; is_admin: boolean; created_at: string };
-type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number; prime_time_start: string; prime_time_end: string };
+type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number; prime_time_start: string; prime_time_end: string; min_cancel_hours: number };
 
 const TABS = [
   { key: "overview",     label: "Özet" },
@@ -54,7 +54,7 @@ export default async function AdminPage({
   let approvedCount = 0, todayCount = 0, totalCount = 0;
   let users: User[] = [];
   let reservations: Slot[] = [];
-  let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, prime_time_start: "16:00", prime_time_end: "20:00" };
+  let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, prime_time_start: "16:00", prime_time_end: "20:00", min_cancel_hours: 0 };
   let filterUserName: string | null = null;
   const hasUserSearch = tab === "users" && query.length > 0;
 

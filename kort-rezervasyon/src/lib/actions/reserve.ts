@@ -74,6 +74,21 @@ export async function cancelSlot(
 
   const admin = createAdminClient();
 
+  const { data: settingsData } = await admin
+    .from("app_settings")
+    .select("min_cancel_hours")
+    .eq("id", 1)
+    .single<{ min_cancel_hours: number }>();
+
+  const minCancelHours = settingsData?.min_cancel_hours ?? 0;
+  if (minCancelHours > 0) {
+    const slotTime = new Date(`${date}T${time}:00`);
+    const diffHours = (slotTime.getTime() - Date.now()) / 3600000;
+    if (diffHours < minCancelHours) {
+      return { error: `Randevuya ${minCancelHours} saatten az kaldığı için iptal edilemiyor.` };
+    }
+  }
+
   // Player1 olarak iptal et — ikisi de temizlenir
   const { data: updated1 } = await admin
     .from("slots")

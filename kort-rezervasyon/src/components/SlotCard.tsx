@@ -15,11 +15,12 @@ interface SlotCardProps {
   isPastDate: boolean;
   primeTimeStart?: string;
   primeTimeEnd?: string;
+  minCancelHours?: number;
   onReserve: (slotId: string, date: string, time: string, player2Id?: string | null) => Promise<{ error?: string }>;
   onCancel: (slotId: string, date: string, time: string) => Promise<{ error?: string }>;
 }
 
-export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeStart = "16:00", primeTimeEnd = "20:00", onReserve, onCancel }: SlotCardProps) {
+export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeStart = "16:00", primeTimeEnd = "20:00", minCancelHours = 0, onReserve, onCancel }: SlotCardProps) {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [picking, setPicking]     = useState(false);
@@ -34,6 +35,9 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
   const isMine   = slot.player1_id === currentUserId || slot.player2_id === currentUserId;
   const hasNames = !!(slot.player1_name || slot.player2_name);
   const isPrimeTime = slot.time >= primeTimeStart && slot.time < primeTimeEnd;
+
+  const cancelLocked = minCancelHours > 0 &&
+    (new Date(`${slot.date}T${slot.time}:00`).getTime() - Date.now()) / 3600000 < minCancelHours;
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -115,11 +119,12 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
           <div className="flex items-center gap-2 min-w-0">
             {!expanded && <span className="text-xs text-text-secondary truncate">{displayNames}</span>}
             <button
-              onClick={e => { e.stopPropagation(); handleCancel(); }}
-              disabled={loading}
+              onClick={e => { e.stopPropagation(); if (!cancelLocked) handleCancel(); }}
+              disabled={loading || cancelLocked}
+              title={cancelLocked ? `Randevuya ${minCancelHours} saatten az kaldığı için iptal edilemiyor` : undefined}
               className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 disabled:opacity-50 shrink-0"
             >
-              {loading ? "..." : "İptal"}
+              {loading ? "..." : cancelLocked ? "Kilitli" : "İptal"}
             </button>
           </div>
         ) : isBooked ? (

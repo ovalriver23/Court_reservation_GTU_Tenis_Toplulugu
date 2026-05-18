@@ -27,20 +27,35 @@ export default async function ReservationsPage() {
   const userId = user.id;
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("slots")
-    .select("*")
-    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
-    .order("date")
-    .order("time");
+  const [{ data }, { data: settingsData }] = await Promise.all([
+    supabase
+      .from("slots")
+      .select("*")
+      .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+      .order("date")
+      .order("time"),
+    supabase
+      .from("app_settings")
+      .select("min_cancel_hours")
+      .eq("id", 1)
+      .single<{ min_cancel_hours: number }>(),
+  ]);
 
+  const minCancelHours = settingsData?.min_cancel_hours ?? 0;
   const reservations = (data as Slot[]) ?? [];
   const activeReservations = reservations.filter(slot => !isPastReservation(slot.date, slot.time));
   const pastReservations = reservations.filter(slot => isPastReservation(slot.date, slot.time));
 
+  function isCancelLocked(slot: Slot): boolean {
+    if (minCancelHours <= 0) return false;
+    const diffHours = (new Date(`${slot.date}T${slot.time}:00`).getTime() - Date.now()) / 3600000;
+    return diffHours < minCancelHours;
+  }
+
   function renderReservation(slot: Slot, showCancel: boolean) {
     const isPlayer1 = slot.player1_id === userId;
     const partners = isPlayer1 ? slot.player2_name : slot.player1_name;
+    const locked = showCancel && isCancelLocked(slot);
 
     return (
       <div key={slot.id} className="bg-surface border border-primary/30 rounded-2xl px-4 py-4">
@@ -55,20 +70,29 @@ export default async function ReservationsPage() {
             )}
           </div>
           {showCancel && (
-            <form
-              action={async () => {
-                "use server";
-                await cancelSlot(slot.id, slot.date, slot.time);
-                revalidatePath("/reservations");
-              }}
-            >
-              <button
-                type="submit"
-                className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 shrink-0"
+            locked ? (
+              <span
+                title={`Randevuya ${minCancelHours} saatten az kaldığı için iptal edilemiyor`}
+                className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary opacity-50 shrink-0 cursor-not-allowed"
               >
-                İptal
-              </button>
-            </form>
+                Kilitli
+              </span>
+            ) : (
+              <form
+                action={async () => {
+                  "use server";
+                  await cancelSlot(slot.id, slot.date, slot.time);
+                  revalidatePath("/reservations");
+                }}
+              >
+                <button
+                  type="submit"
+                  className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 shrink-0"
+                >
+                  İptal
+                </button>
+              </form>
+            )
           )}
         </div>
       </div>

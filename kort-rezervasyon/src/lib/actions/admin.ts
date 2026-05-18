@@ -96,11 +96,12 @@ export async function updateSettings(formData: FormData) {
   const weekly_limit      = Math.max(0, parseInt(formData.get("weekly_limit") as string) || 0);
   const prime_time_start  = formData.get("prime_time_start") as string || "16:00";
   const prime_time_end    = formData.get("prime_time_end") as string || "20:00";
+  const min_cancel_hours  = Math.max(0, parseInt(formData.get("min_cancel_hours") as string) || 0);
 
   const admin = createAdminClient();
   const { error } = await admin
     .from("app_settings")
-    .update({ slot_start, slot_end, daily_limit, weekly_limit, prime_time_start, prime_time_end })
+    .update({ slot_start, slot_end, daily_limit, weekly_limit, prime_time_start, prime_time_end, min_cancel_hours })
     .eq("id", 1);
 
   if (error) return { error: `Ayarlar kaydedilemedi: ${error.message}` };

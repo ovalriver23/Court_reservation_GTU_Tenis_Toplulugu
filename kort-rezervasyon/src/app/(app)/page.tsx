@@ -31,7 +31,7 @@ function isSlotInPast(date: string, time: string): boolean {
   return !(sh > h || (sh === h && sm >= m));
 }
 
-type AppSettings = { slot_start: string; slot_end: string; prime_time_start: string; prime_time_end: string };
+type AppSettings = { slot_start: string; slot_end: string; prime_time_start: string; prime_time_end: string; min_cancel_hours: number };
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(todayString());
@@ -46,7 +46,7 @@ export default function HomePage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
-    supabase.from("app_settings").select("slot_start, slot_end, prime_time_start, prime_time_end").eq("id", 1).single()
+    supabase.from("app_settings").select("slot_start, slot_end, prime_time_start, prime_time_end, min_cancel_hours").eq("id", 1).single()
       .then(({ data }) => { if (data) setSettings(data as AppSettings); });
   }, [supabase]);
 
@@ -126,6 +126,7 @@ export default function HomePage() {
                   isPastDate={isSlotInPast(selectedDate, slot.time)}
                   primeTimeStart={settings?.prime_time_start ?? "16:00"}
                   primeTimeEnd={settings?.prime_time_end ?? "20:00"}
+                  minCancelHours={settings?.min_cancel_hours ?? 0}
                   onReserve={handleReserve}
                   onCancel={handleCancel}
                 />
