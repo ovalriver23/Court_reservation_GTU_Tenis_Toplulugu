@@ -168,7 +168,7 @@ export async function adminReserveSlot(date: string, time: string, name: string)
 
   const { data: updated, error } = await admin
     .from("slots")
-    .update({ player1_id: user.id, player1_name: name.trim() })
+    .update({ player1_id: user.id, player1_name: name.trim(), is_admin_reserved: true })
     .eq("date", date)
     .eq("time", time)
     .is("player1_id", null)
