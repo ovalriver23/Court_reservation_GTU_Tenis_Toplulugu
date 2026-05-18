@@ -21,10 +21,11 @@ interface SlotCardProps {
 }
 
 export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeStart = "16:00", primeTimeEnd = "20:00", minCancelHours = 0, onReserve, onCancel }: SlotCardProps) {
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [picking, setPicking]     = useState(false);
-  const [expanded, setExpanded]   = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [picking, setPicking]       = useState(false);
+  const [expanded, setExpanded]     = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [query, setQuery]         = useState("");
   const [results, setResults]     = useState<{ id: string; name: string }[]>([]);
   const [partner, setPartner]     = useState<{ id: string; name: string } | null>(null);
@@ -116,16 +117,46 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
         </div>
 
         {isMine ? (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0" onClick={e => e.stopPropagation()}>
             {!expanded && <span className="text-xs text-text-secondary truncate">{displayNames}</span>}
             <button
-              onClick={e => { e.stopPropagation(); if (!cancelLocked) handleCancel(); }}
+              onClick={() => { if (!cancelLocked) setConfirmCancel(true); }}
               disabled={loading || cancelLocked}
               title={cancelLocked ? `Randevuya ${minCancelHours} saatten az kaldığı için iptal edilemiyor` : undefined}
               className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 disabled:opacity-50 shrink-0"
             >
               {loading ? "..." : cancelLocked ? "Kilitli" : "İptal"}
             </button>
+
+            {confirmCancel && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center px-6"
+                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+                onClick={() => setConfirmCancel(false)}
+              >
+                <div
+                  className="bg-surface border border-border rounded-2xl px-6 py-5 w-full max-w-sm space-y-4"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <p className="text-text-primary font-semibold text-sm text-center">Rezervasyonu iptal etmek istediğinden emin misin?</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setConfirmCancel(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-border text-text-secondary text-sm font-medium active:scale-95 transition-transform"
+                    >
+                      Hayır
+                    </button>
+                    <button
+                      onClick={() => { setConfirmCancel(false); handleCancel(); }}
+                      disabled={loading}
+                      className="flex-1 py-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-sm font-semibold active:scale-95 transition-transform"
+                    >
+                      Evet, İptal
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : isBooked ? (
           <div className="flex items-center gap-1.5 min-w-0">

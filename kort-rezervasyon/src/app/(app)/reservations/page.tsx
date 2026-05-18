@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/cache";
 import { cancelSlot } from "@/lib/actions/reserve";
+import ConfirmFormButton from "@/components/ConfirmFormButton";
 import type { Slot } from "@/types";
 
 const MONTHS_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -78,20 +79,17 @@ export default async function ReservationsPage() {
                 Kilitli
               </span>
             ) : (
-              <form
+              <ConfirmFormButton
                 action={async () => {
                   "use server";
                   await cancelSlot(slot.id, slot.date, slot.time);
                   revalidatePath("/reservations");
                 }}
+                message="Rezervasyonu iptal etmek istediğinden emin misin?"
+                className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 shrink-0"
               >
-                <button
-                  type="submit"
-                  className="text-sm px-4 py-1.5 rounded-xl border border-border text-text-secondary transition-all active:scale-95 shrink-0"
-                >
-                  İptal
-                </button>
-              </form>
+                İptal
+              </ConfirmFormButton>
             )
           )}
         </div>

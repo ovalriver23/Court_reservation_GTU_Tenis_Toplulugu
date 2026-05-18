@@ -201,7 +201,7 @@ export async function adminReserveSlotRange(
 
   const { data: updated, error } = await admin
     .from("slots")
-    .update({ player1_id: user.id, player1_name: name.trim() })
+    .update({ player1_id: user.id, player1_name: name.trim(), is_admin_reserved: true })
     .gte("date", startDate)
     .lte("date", endDate)
     .gte("time", startTime)

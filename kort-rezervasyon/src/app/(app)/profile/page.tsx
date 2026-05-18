@@ -38,6 +38,7 @@ export default async function ProfilePage() {
       .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
       .gte("date", start)
       .lte("date", end)
+      .or("is_admin_reserved.is.null,is_admin_reserved.eq.false")
       .then(({ data }) => (data ?? []) as { time: string }[]),
     supabaseClient
       .from("app_settings")

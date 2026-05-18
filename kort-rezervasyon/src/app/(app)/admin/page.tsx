@@ -6,6 +6,7 @@ import { rejectUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
 import SettingsForm from "@/components/SettingsForm";
 import AdminReserveForm from "@/components/AdminReserveForm";
 import WarnUserModal from "@/components/WarnUserModal";
+import ConfirmFormButton from "@/components/ConfirmFormButton";
 import type { Slot } from "@/types";
 
 const MONTHS_TR = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
@@ -233,11 +234,13 @@ export default async function AdminPage({
                           {u.is_admin ? "Admin Kaldır" : "Admin Yap"}
                         </button>
                       </form>
-                      <form action={async () => { "use server"; await rejectUser(u.id); }}>
-                        <button type="submit" className="px-3 py-1.5 border border-border text-red-400 text-xs rounded-xl active:scale-95 transition-transform">
-                          {u.approved ? "Sil" : "Reddet"}
-                        </button>
-                      </form>
+                      <ConfirmFormButton
+                        action={async () => { "use server"; await rejectUser(u.id); }}
+                        message={u.approved ? `${u.name} adlı kullanıcıyı silmek istediğinden emin misin?` : `${u.name} adlı kullanıcıyı reddetmek istediğinden emin misin?`}
+                        className="px-3 py-1.5 border border-border text-red-400 text-xs rounded-xl active:scale-95 transition-transform"
+                      >
+                        {u.approved ? "Sil" : "Reddet"}
+                      </ConfirmFormButton>
                     </div>
                   </div>
                 </div>
@@ -301,11 +304,13 @@ export default async function AdminPage({
                       {timeRange(slot.time)} — {formatDate(slot.date)}
                     </p>
                   </div>
-                  <form action={async () => { "use server"; await adminCancelSlot(slot.date, slot.time); }}>
-                    <button type="submit" className="px-3 py-1.5 border border-border text-text-secondary text-sm rounded-xl transition-transform active:scale-95 flex-shrink-0">
-                      İptal
-                    </button>
-                  </form>
+                  <ConfirmFormButton
+                    action={async () => { "use server"; await adminCancelSlot(slot.date, slot.time); }}
+                    message="Bu rezervasyonu iptal etmek istediğinden emin misin?"
+                    className="px-3 py-1.5 border border-border text-text-secondary text-sm rounded-xl transition-transform active:scale-95 flex-shrink-0"
+                  >
+                    İptal
+                  </ConfirmFormButton>
                 </div>
               </div>
             ))}
