@@ -187,7 +187,8 @@ export async function adminReserveSlotRange(
   endDate: string,
   startTime: string,
   endTime: string,
-  name: string
+  name: string,
+  name2: string | null = null
 ) {
   const user = await requireAdmin();
   if (!user) return { error: "Yetkisiz." };
@@ -201,7 +202,12 @@ export async function adminReserveSlotRange(
 
   const { data: updated, error } = await admin
     .from("slots")
-    .update({ player1_id: user.id, player1_name: name.trim(), is_admin_reserved: true })
+    .update({
+      player1_id: user.id,
+      player1_name: name.trim(),
+      player2_name: name2?.trim() || null,
+      is_admin_reserved: true,
+    })
     .gte("date", startDate)
     .lte("date", endDate)
     .gte("time", startTime)

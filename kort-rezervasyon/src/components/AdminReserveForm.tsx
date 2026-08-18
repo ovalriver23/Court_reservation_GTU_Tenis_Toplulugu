@@ -8,14 +8,27 @@ function todayString() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function generateTimes(slotStart: string, slotEnd: string): { value: string; label: string }[] {
+function generateStartTimes(slotStart: string, slotEnd: string): { value: string; label: string }[] {
   const times: { value: string; label: string }[] = [];
   const startH = parseInt(slotStart.split(":")[0]);
   const endH   = parseInt(slotEnd.split(":")[0]);
   for (let h = startH; h <= endH; h++) {
     times.push({
       value: `${String(h).padStart(2, "0")}:00`,
-      label: `${h}.00 - ${h + 1}.00`,
+      label: `${String(h).padStart(2, "0")}:00`,
+    });
+  }
+  return times;
+}
+
+function generateEndTimes(slotStart: string, slotEnd: string): { value: string; label: string }[] {
+  const times: { value: string; label: string }[] = [];
+  const startH = parseInt(slotStart.split(":")[0]);
+  const endH   = parseInt(slotEnd.split(":")[0]);
+  for (let h = startH; h <= endH; h++) {
+    times.push({
+      value: `${String(h).padStart(2, "0")}:00`,
+      label: `${String(h + 1).padStart(2, "0")}:00`,
     });
   }
   return times;
@@ -27,23 +40,26 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
   const [startTime, setStartTime] = useState(slotStart);
   const [endTime, setEndTime]     = useState(slotEnd);
   const [name, setName]           = useState("Turnuva");
+  const [name2, setName2]         = useState("");
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const times = generateTimes(slotStart, slotEnd);
+  const startTimes = generateStartTimes(slotStart, slotEnd);
+  const endTimes   = generateEndTimes(slotStart, slotEnd);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
-    const result = await adminReserveSlotRange(date, date, startTime, endTime, name);
+    const result = await adminReserveSlotRange(date, date, startTime, endTime, name, name2 || null);
     setLoading(false);
     if (result?.error) {
       setError(result.error);
     } else {
       setSuccessMsg(`${result.count} slot rezerve edildi.`);
+      setName2("");
       setTimeout(() => { setSuccessMsg(null); setOpen(false); }, 2000);
     }
   }
@@ -86,7 +102,7 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
                   onChange={e => setStartTime(e.target.value)}
                   className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
                 >
-                  {times.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {startTimes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
                 <span className="text-text-secondary text-xs shrink-0">—</span>
                 <select
@@ -94,20 +110,34 @@ export default function AdminReserveForm({ slotStart, slotEnd }: { slotStart: st
                   onChange={e => setEndTime(e.target.value)}
                   className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
                 >
-                  {times.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {endTimes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* İsim */}
+            {/* İsim 1 */}
             <div>
-              <label className="block text-text-secondary text-xs mb-1.5">İsim</label>
+              <label className="block text-text-secondary text-xs mb-1.5">İsim 1</label>
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
                 placeholder="Turnuva, Antrenman..."
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
+              />
+            </div>
+
+            {/* İsim 2 (Opsiyonel) */}
+            <div>
+              <label className="block text-text-secondary text-xs mb-1.5">
+                İsim 2 <span className="text-text-secondary/50">(opsiyonel)</span>
+              </label>
+              <input
+                type="text"
+                value={name2}
+                onChange={e => setName2(e.target.value)}
+                placeholder="İkinci oyuncu..."
                 className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-text-primary text-sm"
               />
             </div>
