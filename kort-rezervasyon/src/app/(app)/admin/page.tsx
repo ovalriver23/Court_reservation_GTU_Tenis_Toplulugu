@@ -8,6 +8,7 @@ import AdminReserveForm from "@/components/AdminReserveForm";
 import WarnUserModal from "@/components/WarnUserModal";
 import ConfirmFormButton from "@/components/ConfirmFormButton";
 import type { Slot } from "@/types";
+import { slotTimeMs, todayTR } from "@/lib/time";
 
 const MONTHS_TR = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
 const DAYS_TR   = ["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"];
@@ -20,11 +21,6 @@ function formatDate(dateStr: string): string {
 function timeRange(time: string): string {
   const [h, m] = time.split(":").map(Number);
   return `${h}.${String(m).padStart(2, "0")} - ${h + 1}.${String(m).padStart(2, "0")}`;
-}
-
-function todayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
 type User = { id: string; name: string; email: string; approved: boolean; is_admin: boolean; created_at: string };
@@ -49,7 +45,7 @@ export default async function AdminPage({
   const reservationView = searchParams?.view === "past" ? "past" : "active";
   const supabase = await createClient();
   const admin    = createAdminClient();
-  const today    = todayString();
+  const today    = todayTR();
 
 
   let approvedCount = 0, todayCount = 0, totalCount = 0;
@@ -60,8 +56,7 @@ export default async function AdminPage({
   const hasUserSearch = tab === "users" && query.length > 0;
 
   function isPastReservation(slot: Slot): boolean {
-    const slotDateTime = new Date(`${slot.date}T${slot.time}:00`);
-    return slotDateTime < new Date();
+    return slotTimeMs(slot.date, slot.time) < Date.now();
   }
 
   if (tab === "overview") {

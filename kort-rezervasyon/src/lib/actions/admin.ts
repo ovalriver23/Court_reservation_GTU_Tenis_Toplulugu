@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { escapeHtml } from "@/lib/escape";
+import { todayTR, addDaysTR } from "@/lib/time";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -18,10 +19,6 @@ async function requireAdmin() {
   return profile?.is_admin ? user : null;
 }
 
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 /**
  * Inserts missing slots for the next 14 days within the given time range,
  * and removes empty (unbooked) slots outside that range.
@@ -33,11 +30,10 @@ async function regenerateSlots(slotStart: string, slotEnd: string) {
   const endHour   = parseInt(slotEnd.split(":")[0]);
 
   // Build list of slots to insert: 14 days × hours in range
+  const today = todayTR();
   const rows: { date: string; time: string }[] = [];
   for (let i = 0; i < 14; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    const date = toDateStr(d);
+    const date = addDaysTR(today, i);
     for (let h = startHour; h <= endHour; h++) {
       rows.push({ date, time: `${String(h).padStart(2, "0")}:00` });
     }
@@ -45,8 +41,6 @@ async function regenerateSlots(slotStart: string, slotEnd: string) {
 
   // Insert new slots — skip existing ones
   await admin.from("slots").upsert(rows, { onConflict: "date,time", ignoreDuplicates: true });
-
-  const today = toDateStr(new Date());
 
   // Remove unbooked slots that are now before the start time
   await admin.from("slots")

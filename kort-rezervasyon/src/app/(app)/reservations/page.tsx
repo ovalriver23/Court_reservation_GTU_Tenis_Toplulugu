@@ -4,6 +4,7 @@ import { getUser } from "@/lib/cache";
 import { cancelSlot } from "@/lib/actions/reserve";
 import ConfirmFormButton from "@/components/ConfirmFormButton";
 import type { Slot } from "@/types";
+import { slotTimeMs } from "@/lib/time";
 
 const MONTHS_TR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 const DAYS_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -19,7 +20,7 @@ function timeRange(time: string): string {
 }
 
 function isPastReservation(slotDate: string, slotTime: string): boolean {
-  return new Date(`${slotDate}T${slotTime}:00`) < new Date();
+  return slotTimeMs(slotDate, slotTime) < Date.now();
 }
 
 export default async function ReservationsPage() {
@@ -49,7 +50,7 @@ export default async function ReservationsPage() {
 
   function isCancelLocked(slot: Slot): boolean {
     if (minCancelHours <= 0) return false;
-    const diffHours = (new Date(`${slot.date}T${slot.time}:00`).getTime() - Date.now()) / 3600000;
+    const diffHours = (slotTimeMs(slot.date, slot.time) - Date.now()) / 3600000;
     return diffHours < minCancelHours;
   }
 

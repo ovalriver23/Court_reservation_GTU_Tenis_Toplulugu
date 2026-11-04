@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { ReserveSlotResult } from "@/types";
+import { slotTimeMs } from "@/lib/time";
 
 export async function reserveSlot(
   _slotId: string,
@@ -82,8 +83,7 @@ export async function cancelSlot(
 
   const minCancelHours = settingsData?.min_cancel_hours ?? 0;
   if (minCancelHours > 0) {
-    const slotTime = new Date(`${date}T${time}:00`);
-    const diffHours = (slotTime.getTime() - Date.now()) / 3600000;
+    const diffHours = (slotTimeMs(date, time) - Date.now()) / 3600000;
     if (diffHours < minCancelHours) {
       return { error: `Randevuya ${minCancelHours} saatten az kaldığı için iptal edilemiyor.` };
     }

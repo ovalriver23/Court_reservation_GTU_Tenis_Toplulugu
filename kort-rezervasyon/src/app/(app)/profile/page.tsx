@@ -3,25 +3,13 @@ import { getUser, getProfile } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import PasswordChangeForm from "./PasswordChangeForm";
 import NameChangeForm from "./NameChangeForm";
-
-function getISOWeekBounds() {
-  const today = new Date();
-  const day = today.getDay(); // 0=Paz, 1=Pzt, ..., 6=Cmt
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diff);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return { start: fmt(monday), end: fmt(sunday) };
-}
+import { weekBoundsTR } from "@/lib/time";
 
 export default async function ProfilePage() {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const { start, end } = getISOWeekBounds();
+  const { start, end } = weekBoundsTR();
   const supabaseClient = await createClient();
 
   const [profile, profileExtra, weekSlots, settingsRow] = await Promise.all([
