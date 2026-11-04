@@ -5,6 +5,24 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { ReserveSlotResult } from "@/types";
 import { slotTimeMs } from "@/lib/time";
 
+const RESERVE_ERRORS: Record<string, string> = {
+  slot_full: "Bu saat dolu, başka bir saat seç.",
+  daily_limit_exceeded: "Günlük rezervasyon limitine ulaştınız.",
+  weekly_limit_exceeded: "Haftalık rezervasyon limitine ulaştınız.",
+  prime_time_limit_exceeded: "Bu haftaki prime time hakkınızı kullandınız.",
+  partner_daily_limit_exceeded: "Seçtiğin kişinin günlük rezervasyon hakkı dolmuş.",
+  partner_weekly_limit_exceeded: "Seçtiğin kişinin haftalık rezervasyon hakkı dolmuş.",
+  partner_prime_time_limit_exceeded: "Seçtiğin kişinin bu haftaki prime time hakkı dolmuş.",
+  not_authenticated: "Oturumun sona ermiş, lütfen tekrar giriş yap.",
+  forbidden: "Bu işlem için yetkin yok.",
+  profile_not_found: "Profil bulunamadı.",
+  invalid_partner: "Kendini arkadaş olarak seçemezsin.",
+  partner_not_found: "Seçilen kişi bulunamadı.",
+  invalid_time: "Geçersiz saat.",
+  slot_in_past: "Bu saat başladı ya da geçti, sayfayı yenileyip başka bir saat seç.",
+  slot_not_found: "Bu saat artık mevcut değil, sayfayı yenile.",
+};
+
 export async function reserveSlot(
   _slotId: string,
   date: string,
@@ -50,14 +68,7 @@ export async function reserveSlot(
 
   const result = data as ReserveSlotResult;
   if (!result.success) {
-    if (result.error === "slot_full") return { error: "Bu saat dolu, başka bir saat seç." };
-    if (result.error === "daily_limit_exceeded") return { error: "Günlük rezervasyon limitine ulaştınız." };
-    if (result.error === "weekly_limit_exceeded") return { error: "Haftalık rezervasyon limitine ulaştınız." };
-    if (result.error === "partner_daily_limit_exceeded") return { error: "Seçtiğin kişinin günlük rezervasyon hakkı dolmuş." };
-    if (result.error === "partner_weekly_limit_exceeded") return { error: "Seçtiğin kişinin haftalık rezervasyon hakkı dolmuş." };
-    if (result.error === "prime_time_limit_exceeded") return { error: "Bu haftaki prime time hakkınızı kullandınız (16:00–20:00)." };
-    if (result.error === "partner_prime_time_limit_exceeded") return { error: "Seçtiğin kişinin bu haftaki prime time hakkı dolmuş." };
-    return { error: result.error ?? "Rezervasyon alınamadı." };
+    return { error: RESERVE_ERRORS[result.error] ?? "Rezervasyon alınamadı." };
   }
 
   revalidatePath("/reservations");
@@ -72,6 +83,11 @@ export async function cancelSlot(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Giriş yapılmadı." };
+
+  // Başlamış ya da geçmiş rezervasyon iptal edilemez (haftalık hakkı geri kazanmayı önler)
+  if (slotTimeMs(date, time) <= Date.now()) {
+    return { error: "Başlamış ya da geçmiş bir rezervasyon iptal edilemez." };
+  }
 
   const admin = createAdminClient();
 

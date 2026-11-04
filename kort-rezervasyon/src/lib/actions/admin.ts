@@ -226,7 +226,11 @@ export async function adminCancelSlot(date: string, time: string) {
   const admin = createAdminClient();
   const { error } = await admin
     .from("slots")
-    .update({ player1_id: null, player1_name: null })
+    .update({
+      player1_id: null, player1_name: null,
+      player2_id: null, player2_name: null,
+      is_admin_reserved: false,
+    })
     .eq("date", date)
     .eq("time", time);
 

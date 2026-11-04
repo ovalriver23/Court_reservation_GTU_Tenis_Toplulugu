@@ -70,7 +70,8 @@ export default function SlotCard({ slot, currentUserId, isPastDate, primeTimeSta
   async function handleCancel() {
     setError(null);
     setLoading(true);
-    await onCancel(slot.id, slot.date, slot.time);
+    const result = await onCancel(slot.id, slot.date, slot.time);
+    if (result.error) setError(result.error);
     setLoading(false);
   }
 

@@ -28,6 +28,14 @@ export type ReserveSlotResult =
       | "partner_daily_limit_exceeded"
       | "partner_weekly_limit_exceeded"
       | "partner_prime_time_limit_exceeded"
+      | "not_authenticated"
+      | "forbidden"
+      | "profile_not_found"
+      | "invalid_partner"
+      | "partner_not_found"
+      | "invalid_time"
+      | "slot_in_past"
+      | "slot_not_found"
     };
 
 // Minimal Database type used by Supabase clients
