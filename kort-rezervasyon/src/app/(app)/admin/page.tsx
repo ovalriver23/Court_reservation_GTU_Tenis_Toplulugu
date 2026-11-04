@@ -37,12 +37,14 @@ const TABS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: { tab?: string; userId?: string; q?: string; view?: string };
+  searchParams: Promise<{ tab?: string; userId?: string; q?: string; view?: string }>;
 }) {
-  const tab    = searchParams?.tab    ?? "overview";
-  const userId = searchParams?.userId ?? null;
-  const query  = searchParams?.q?.trim() ?? "";
-  const reservationView = searchParams?.view === "past" ? "past" : "active";
+  // Next.js 15: searchParams artık bir Promise
+  const params = await searchParams;
+  const tab    = params?.tab    ?? "overview";
+  const userId = params?.userId ?? null;
+  const query  = params?.q?.trim() ?? "";
+  const reservationView = params?.view === "past" ? "past" : "active";
   const supabase = await createClient();
   const admin    = createAdminClient();
   const today    = todayTR();
