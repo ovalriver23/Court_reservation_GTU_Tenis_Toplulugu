@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { escapeHtml } from "@/lib/escape";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -274,11 +275,11 @@ export async function sendWarningEmail(
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #1a1a1a; border-radius: 16px; overflow: hidden;">
           <div style="background: #A3472E; padding: 24px 32px;">
             <h2 style="color: #ffffff; margin: 0; font-size: 18px;">GTU Tenis — Yönetici Bildirimi</h2>
-            <p style="color: #ffffff99; margin: 4px 0 0; font-size: 13px;">${new Date().toLocaleString("tr-TR")}</p>
+            <p style="color: #ffffff99; margin: 4px 0 0; font-size: 13px;">${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}</p>
           </div>
           <div style="padding: 28px 32px;">
-            <p style="color: #aaaaaa; font-size: 13px; margin: 0 0 16px;">Merhaba, <span style="color: #ffffff;">${profile.name}</span></p>
-            <p style="color: #ffffff; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${message.trim()}</p>
+            <p style="color: #aaaaaa; font-size: 13px; margin: 0 0 16px;">Merhaba, <span style="color: #ffffff;">${escapeHtml(profile.name)}</span></p>
+            <p style="color: #ffffff; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${escapeHtml(message.trim())}</p>
           </div>
           <div style="border-top: 1px solid #333; padding: 14px 32px;">
             <p style="color: #444444; font-size: 11px; margin: 0;">GTU Tenis Topluluğu · gtutennis.com.tr</p>

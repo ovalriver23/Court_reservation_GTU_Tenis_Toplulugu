@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { sendFeedback } from "@/lib/actions/feedback";
 
-export default function FeedbackButton({ userName }: { userName: string }) {
+export default function FeedbackButton() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function FeedbackButton({ userName }: { userName: string }) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const result = await sendFeedback(message, userName);
+    const result = await sendFeedback(message);
     setLoading(false);
     if (result.error) {
       setError(result.error);
