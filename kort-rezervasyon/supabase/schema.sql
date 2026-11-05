@@ -418,8 +418,6 @@ GRANT ALL ON FUNCTION public.generate_slots() TO service_role;
 -- Name: FUNCTION handle_new_user(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.handle_new_user() TO anon;
-GRANT ALL ON FUNCTION public.handle_new_user() TO authenticated;
 GRANT ALL ON FUNCTION public.handle_new_user() TO service_role;
 
 
@@ -436,8 +434,8 @@ GRANT ALL ON FUNCTION public.reserve_slot(p_date date, p_time text, p_user_id uu
 -- Name: TABLE app_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.app_settings TO anon;
-GRANT ALL ON TABLE public.app_settings TO authenticated;
+GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.app_settings TO anon;
+GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.app_settings TO authenticated;
 GRANT ALL ON TABLE public.app_settings TO service_role;
 
 
@@ -445,8 +443,7 @@ GRANT ALL ON TABLE public.app_settings TO service_role;
 -- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE public.profiles TO anon;
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE public.profiles TO authenticated;
+GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
 
 
@@ -454,8 +451,8 @@ GRANT ALL ON TABLE public.profiles TO service_role;
 -- Name: TABLE slots; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE public.slots TO anon;
-GRANT ALL ON TABLE public.slots TO authenticated;
+GRANT REFERENCES,TRIGGER,MAINTAIN ON TABLE public.slots TO anon;
+GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.slots TO authenticated;
 GRANT ALL ON TABLE public.slots TO service_role;
 
 
