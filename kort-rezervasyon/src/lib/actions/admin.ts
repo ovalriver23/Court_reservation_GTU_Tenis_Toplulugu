@@ -57,19 +57,7 @@ async function regenerateSlots(slotStart: string, slotEnd: string) {
     .gt("time", slotEnd);
 }
 
-export async function approveUser(userId: string) {
-  const user = await requireAdmin();
-  if (!user) return { error: "Yetkisiz." };
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update({ approved: true }).eq("id", userId);
-
-  if (error) return { error: `Kullanıcı onaylanamadı: ${error.message}` };
-  revalidatePath("/admin");
-  return {};
-}
-
-export async function rejectUser(userId: string) {
+export async function deleteUser(userId: string) {
   const user = await requireAdmin();
   if (!user) return { error: "Yetkisiz." };
 
@@ -144,7 +132,7 @@ export async function toggleAdmin(userId: string) {
   const newIsAdmin = !profile?.is_admin;
   const { error } = await admin
     .from("profiles")
-    .update({ is_admin: newIsAdmin, ...(newIsAdmin ? { approved: true } : {}) })
+    .update({ is_admin: newIsAdmin })
     .eq("id", userId);
 
   if (error) return { error: `Admin durumu değiştirilemedi: ${error.message}` };

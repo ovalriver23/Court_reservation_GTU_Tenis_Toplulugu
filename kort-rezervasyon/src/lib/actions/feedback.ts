@@ -4,15 +4,21 @@ import { getUser, getProfile } from "@/lib/cache";
 import { escapeHtml } from "@/lib/escape";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FEEDBACK_RECIPIENTS = [
-  "tuanaak45@gmail.com", // TODO: değiştir
-];
+// Virgülle ayrılmış adres listesi, ör. "a@ornek.com,b@ornek.com" (Vercel ortam değişkeni)
+const FEEDBACK_RECIPIENTS = (process.env.FEEDBACK_RECIPIENTS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 const MAX_LENGTH = 2000;
 
 export async function sendFeedback(message: string) {
   // Sadece giriş yapmış kullanıcılar gönderebilir
   const user = await getUser();
   if (!user) return { error: "Geri bildirim göndermek için giriş yapmalısın." };
+
+  if (FEEDBACK_RECIPIENTS.length === 0) {
+    return { error: "Geri bildirim şu anda gönderilemiyor." };
+  }
 
   const trimmed = message.trim();
   if (!trimmed) return { error: "Mesaj boş olamaz." };

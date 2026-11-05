@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { rejectUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
+import { deleteUser, adminCancelSlot, toggleAdmin } from "@/lib/actions/admin";
 import SettingsForm from "@/components/SettingsForm";
 import AdminReserveForm from "@/components/AdminReserveForm";
 import WarnUserModal from "@/components/WarnUserModal";
@@ -23,7 +23,7 @@ function timeRange(time: string): string {
   return `${h}.${String(m).padStart(2, "0")} - ${h + 1}.${String(m).padStart(2, "0")}`;
 }
 
-type User = { id: string; name: string; email: string; approved: boolean; is_admin: boolean; created_at: string };
+type User = { id: string; name: string; email: string; is_admin: boolean; created_at: string };
 type AppSettings = { slot_start: string; slot_end: string; daily_limit: number; weekly_limit: number; prime_time_start: string; prime_time_end: string; min_cancel_hours: number };
 
 const TABS = [
@@ -50,7 +50,7 @@ export default async function AdminPage({
   const today    = todayTR();
 
 
-  let approvedCount = 0, todayCount = 0, totalCount = 0;
+  let memberCount = 0, todayCount = 0, totalCount = 0;
   let users: User[] = [];
   let reservations: Slot[] = [];
   let settings: AppSettings = { slot_start: "08:00", slot_end: "20:00", daily_limit: 0, weekly_limit: 0, prime_time_start: "16:00", prime_time_end: "20:00", min_cancel_hours: 0 };
@@ -63,11 +63,11 @@ export default async function AdminPage({
 
   if (tab === "overview") {
     const [r1, r2, r3] = await Promise.all([
-      admin.from("profiles").select("*", { count: "exact", head: true }).eq("approved", true),
+      admin.from("profiles").select("*", { count: "exact", head: true }),
       admin.from("slots").select("*", { count: "exact", head: true }).not("player1_id", "is", null).eq("date", today),
       admin.from("slots").select("*", { count: "exact", head: true }).not("player1_id", "is", null),
     ]);
-    approvedCount = r1.count ?? 0;
+    memberCount   = r1.count ?? 0;
     todayCount    = r2.count ?? 0;
     totalCount    = r3.count ?? 0;
   }
@@ -76,7 +76,7 @@ export default async function AdminPage({
     const [usersRes, slotsRes] = await Promise.all([
       admin
         .from("profiles")
-        .select("id, name, email, approved, is_admin, created_at")
+        .select("id, name, email, is_admin, created_at")
         .order("created_at", { ascending: false }),
       admin
         .from("slots")
@@ -158,7 +158,7 @@ export default async function AdminPage({
         {/* OVERVIEW */}
         {tab === "overview" && (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Toplam Üye"         value={approvedCount} />
+            <StatCard label="Toplam Üye"         value={memberCount} />
             <StatCard label="Bugün Rezervasyon"  value={todayCount} />
             <StatCard label="Aktif Rezervasyon"  value={totalCount} />
           </div>
@@ -232,11 +232,11 @@ export default async function AdminPage({
                         </button>
                       </form>
                       <ConfirmFormButton
-                        action={async () => { "use server"; await rejectUser(u.id); }}
-                        message={u.approved ? `${u.name} adlı kullanıcıyı silmek istediğinden emin misin?` : `${u.name} adlı kullanıcıyı reddetmek istediğinden emin misin?`}
+                        action={async () => { "use server"; await deleteUser(u.id); }}
+                        message={`${u.name} adlı kullanıcıyı silmek istediğinden emin misin?`}
                         className="px-3 py-1.5 border border-border text-red-400 text-xs rounded-xl active:scale-95 transition-transform"
                       >
-                        {u.approved ? "Sil" : "Reddet"}
+                        Sil
                       </ConfirmFormButton>
                     </div>
                   </div>

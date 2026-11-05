@@ -61,7 +61,7 @@ export async function register(formData: FormData) {
   if (data.user) {
     const admin = createAdminClient();
     await admin.from("profiles").upsert(
-      { id: data.user.id, name, email, approved: true },
+      { id: data.user.id, name, email },
       { onConflict: "id" }
     );
   }
@@ -71,7 +71,7 @@ export async function register(formData: FormData) {
     redirect(`/verify?email=${encodeURIComponent(email)}`);
   }
 
-  redirect("/pending");
+  redirect("/");
 }
 
 export async function verifyEmail(email: string, token: string) {
